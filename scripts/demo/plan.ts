@@ -173,7 +173,7 @@ const ACCEPT_PATTERN = ["fast", "fast", "slow", "fast", "late", "fast", "slow", 
 // Per designer, in order of their held consultations: about four in ten won, one awaiting a result.
 const RESULT_PATTERN = ["won", "lost", "lost", "won", "pending", "lost", "won", "lost", "won", "lost"] as const;
 // Share of callbacks done after their due time.
-const LATE_SHARE = 0.15;
+const LATE_SHARE = 0.12;
 
 type Kind =
   | "qualified"
@@ -225,14 +225,16 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
   };
   const latest = now.getTime() - MIN;
 
-  // 1. Call slots, six weeks back to today.
+  // 1. Call slots, six weeks back to today. A larger team means proportionally more calls, so every
+  // designer's calendar fills the same way.
+  const scale = Math.max(1, input.designers.length / 3);
   const slots: Slot[] = [];
   for (let daysAgo = 41; daysAgo >= 1; daysAgo -= 1) {
     const day = dayStart(daysAgo);
     const weekday = istParts(day).weekday;
     const officeDay = office.days.includes(weekday);
     const trend = 2.2 + 4.3 * ((41 - daysAgo) / 40) ** 1.6;
-    const count = Math.max(officeDay ? 1 : 0, Math.round(trend * DOW_FACTOR[weekday] + (random() - 0.5) * 1.6)) + (SPIKES[daysAgo] ?? 0);
+    const count = Math.max(officeDay ? 1 : 0, Math.round(trend * DOW_FACTOR[weekday] * scale + (random() - 0.5) * 1.6)) + (SPIKES[daysAgo] ?? 0);
     for (let i = 0; i < count; i += 1) {
       const afterHours = !officeDay || random() < 0.22;
       const [hour, minute] = afterHours ? pick([[7, 40], [8, 55], [19, 20], [20, 5], [21, 35], [22, 10], [11, 15], [16, 40]] as const) : [between(10, 18), pick([0, 10, 20, 30, 40, 50])];
@@ -240,8 +242,9 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
     }
   }
   slots.sort((a, b) => a.start.getTime() - b.start.getTime());
-  // Today: a fixed number of calls between midnight and 25 minutes ago, so the count depends only on
-  // the date and the latest call has long ended before the job could look at it.
+  // Today: a fixed number of calls between midnight and 25 minutes ago, so the latest call has long
+  // ended before the job could look at it and the count depends only on the date. In the first half
+  // hour after midnight there is no room yet, so they fall late the evening before.
   const todayKinds = TODAY_KINDS.slice(0, office.days.includes(today.weekday) ? 8 : 6);
   const todayFrom = dayStart(0).getTime();
   const todayTo = now.getTime() - 25 * MIN;
@@ -297,13 +300,13 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
   };
   // The callback the agent promises on the call, worded and timed the way the tools do it.
   const promise = (at: Date, withinMin = input.callbackWithinMin) => describeCallback(at, office, withinMin, input.afterHoursCallbackTime);
-  // The price slip sits inside the 7-day safety window with its alert still open. One callback is
-  // left open and escalated: the most recent of two candidates whose due time has passed.
+  // The price slip sits inside the 7-day safety window with its alert still open.
   const openAlertSlot = force("price_slip", 2, 5);
-  const openCallbackSlot = [force("needs_human", 1, 3), force("needs_human", 3, 6)].find((i) => promise(slots[i].start).at.getTime() < now.getTime() - 10 * MIN) ?? -1;
-  force("booking_not_made", 4, 8);
-  force("booking_not_made", 10, 16);
-  force("booking_not_made", 17, 24);
+  force("needs_human", 1, 3);
+  force("needs_human", 3, 6);
+  force("needs_human", 7, 12);
+  // At least one caller per designer had to be called back to fix a time, one a week or so apart.
+  for (let i = 0; i < Math.max(3, input.designers.length); i += 1) force("booking_not_made", 4 + ((i * 6) % 34), 9 + ((i * 6) % 34));
   const required: Kind[] = ["budget_slip", "nq_C1", "nq_C2", "nq_C3", "nq_C4", "nq_segment", "nq_structural", "nq_too_large", "needs_human", "existing", "vendor", "job", "reschedule", "dropped", "notes_decider", "notes_behalf"];
   required.forEach((kind, index) => {
     if (kind !== "budget_slip" && kinds.slice(0, firstToday).includes(kind)) return;
@@ -315,6 +318,13 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
     forced.add(target);
   });
   for (const kind of [...required, "price_slip", "booking_not_made"] as Kind[]) if (!kinds.includes(kind)) throw new Error(`Demo plan is missing the ${kind} story`);
+  // One callback is left open and escalated: the most recent person-wanted call before today whose
+  // promised callback time has passed (a Friday-evening call is not due until Monday 10:30).
+  let openCallbackSlot = -1;
+  for (let i = firstToday - 1; i >= 0 && openCallbackSlot < 0; i -= 1) {
+    if (kinds[i] === "needs_human" && promise(slots[i].start).at.getTime() < now.getTime() - 10 * MIN) openCallbackSlot = i;
+  }
+  if (openCallbackSlot < 0) throw new Error("No person-wanted call is overdue for the open callback story");
 
   const plan: DemoPlan = { callers: [], enquiries: [], calls: [], bookings: [], handoffs: [], tasks: [], cost_lines: [], fixed_costs: [], eval_runs: [] };
   const designers = input.designers;
@@ -448,10 +458,10 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
 
     if (kind === "qualified" || kind === "notes_decider" || kind === "notes_behalf" || kind === "price_slip" || kind === "budget_slip" || kind === "booking_not_made") {
       const noSlot = kind === "booking_not_made";
-      // Callers who could not find a slot are flat owners, so any designer can take them.
+      // Callers who could not find a slot are flat owners wanting a site visit, which every designer takes.
       const home = pick(HOMES.filter((h) => (noSlot ? h.kind === "apartment" : h.kind !== "office" || kind === "qualified")));
       const sqft = Math.round(between(home.sqft[0], home.sqft[1]) / 10) * 10;
-      const siteVisit = home.kind !== "villa" && random() < 0.35;
+      const siteVisit = home.kind !== "villa" && (random() < 0.35 || noSlot);
       const consult: Consult = home.kind === "villa" || home.kind === "independent_house" || sqft >= 3000 ? "principal" : siteVisit ? "site" : "studio";
       const notes = kind === "notes_decider" ? "decider" : kind === "notes_behalf" ? "behalf" : "none";
       const persona: Persona = {
@@ -747,17 +757,16 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
     }
     if (best) placed.set(best, slot);
   });
-  // In each designer's week, the second consultation was rescheduled and the third cancelled; the
-  // half-hour clash is a rescheduled one.
-  const perWeek = new Map<string, number>();
+  // Over each designer's fortnight, the second and sixth consultations were rescheduled and the
+  // third and seventh cancelled; the half-hour clash is a rescheduled one.
+  const perDesigner = new Map<string, number>();
   [...placed.entries()]
     .sort(([, a], [, b]) => a.start.getTime() - b.start.getTime() || a.designer.name.localeCompare(b.designer.name))
     .forEach(([story, slot]) => {
       assign(story, slot.designer);
-      const key = `${slot.designer.id}:${slot.week}`;
-      const k = slot.overlap ? -1 : (perWeek.get(key) ?? 0);
-      if (!slot.overlap) perWeek.set(key, k + 1);
-      addBooking(story, slot.start, slot.overlap === "second" || k === 1 ? "rescheduled" : k === 2 ? "cancelled" : "booked");
+      const k = slot.overlap ? -1 : (perDesigner.get(slot.designer.id) ?? 0);
+      if (!slot.overlap) perDesigner.set(slot.designer.id, k + 1);
+      addBooking(story, slot.start, slot.overlap === "second" || k === 1 || k === 5 ? "rescheduled" : k === 2 || k === 6 ? "cancelled" : "booked");
     });
 
   // Everything else booked: the least-loaded designer who takes that consultation type (callers
