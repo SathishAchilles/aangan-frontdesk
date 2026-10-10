@@ -1,7 +1,7 @@
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { requireStaff } from "@/lib/auth";
-import { Badge, Card, inr, istTime, PageHeader, Table } from "../ui";
+import { Badge, Card, inr, istTime, Meter, MeterCell, PageHeader, relTime, renderedAt, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -33,19 +33,39 @@ export default async function Quality() {
     ) t where n <= 20 order by eval_name, started_at desc`;
   const latest = new Map<string, Run>();
   for (const run of runs) if (!latest.has(run.eval_name)) latest.set(run.eval_name, run);
+  const now = renderedAt();
+  const passing = [...latest.values()].filter((run) => run.passed).length;
+  const history = new Map<string, { passed: number; total: number }>();
+  for (const run of runs) {
+    const tally = history.get(run.eval_name) ?? { passed: 0, total: 0 };
+    tally.total += 1;
+    if (run.passed) tally.passed += 1;
+    history.set(run.eval_name, tally);
+  }
 
   return (
     <main className="flex flex-col gap-6">
       <PageHeader title="Quality" eyebrow="Latest eval runs" />
-      <Card title="Latest result per eval">
+      <Card
+        title="Latest result per eval"
+        action={
+          latest.size > 0 ? (
+            <span className="flex min-w-40 items-center gap-3">
+              <Badge tone={passing === latest.size ? "ok" : "danger"}>{`${passing} of ${latest.size} passing`}</Badge>
+              <Meter value={passing} max={latest.size} className="w-24" />
+            </span>
+          ) : undefined
+        }
+      >
         <Table
-          head={["Eval", "When (IST)", "Result", "Key metrics", "Data", "Cost"]}
+          head={["Eval", "When (IST)", "Result", "Key metrics", "Recent passes", "Data", "Cost"]}
           rows={[...latest.values()].map((run) => [
             <span key="e" className="font-mono text-xs font-medium">
               {run.eval_name}
             </span>,
-            <span key="w" className="whitespace-nowrap">
+            <span key="w" className="flex flex-col gap-0.5 whitespace-nowrap">
               {istTime(run.started_at)}
+              <span className="text-xs text-ink-soft">{relTime(run.started_at, now)}</span>
             </span>,
             run.passed ? (
               <Badge key="r" tone="ok">
@@ -55,6 +75,7 @@ export default async function Quality() {
               <Badge key="r" tone="danger">{`❌ Fail: ${run.failed_thresholds.join("; ")}`}</Badge>
             ),
             (HEADLINE[run.eval_name] ?? Object.keys(run.metrics).slice(0, 3)).map((key) => `${key} ${format(run.metrics[key])}`).join(" · "),
+            <MeterCell key="h" value={history.get(run.eval_name)?.passed ?? 0} max={history.get(run.eval_name)?.total ?? 0}>{`${history.get(run.eval_name)?.passed ?? 0}/${history.get(run.eval_name)?.total ?? 0}`}</MeterCell>,
             run.dataset_version,
             inr(Number(run.cost_inr)),
           ])}

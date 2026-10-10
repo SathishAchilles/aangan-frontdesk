@@ -4,7 +4,7 @@ import { SCHEMA_NAME } from "@/db/schema";
 import { parseRange } from "@/lib/dashboard/metrics";
 import { maskPhone } from "@/lib/phone";
 import { requireStaff } from "@/lib/auth";
-import { Badge, Card, istTime, OUTCOME_LABEL, OUTCOME_TONE, PageHeader, RangePicker, Table } from "../ui";
+import { Badge, Card, istTime, MeterCell, OUTCOME_LABEL, OUTCOME_TONE, PageHeader, RangePicker, relTime, renderedAt, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,11 @@ export default async function Calls({ searchParams }: { searchParams: Promise<{ 
     where c.created_at >= ${`${range.from}T00:00:00+05:30`} and c.created_at < ${`${range.to}T00:00:00+05:30`}
       and (${outcome}::text is null or e.outcome = ${outcome} or (${outcome} = 'QUALIFIED' and e.outcome = 'QUALIFIED_WITH_NOTES'))
     order by c.created_at desc limit 200`;
+  const now = renderedAt();
+  const flagged = (row: (typeof rows)[number]) => (row.flags?.price_figure?.length ?? 0) + (row.flags?.budget_question?.length ?? 0) > 0;
+  const longest = Math.max(0, ...rows.map((row) => row.duration_s ?? 0));
+  const dropped = rows.filter((row) => row.dropped).length;
+  const flags = rows.filter(flagged).length;
 
   return (
     <main className="flex flex-col gap-6">
@@ -44,15 +49,35 @@ export default async function Calls({ searchParams }: { searchParams: Promise<{ 
           );
         })}
       </nav>
-      <Card>
+      <Card
+        action={
+          rows.length > 0 ? (
+            <span className="flex flex-wrap gap-1.5">
+              <Badge tone="accent">{`${rows.length} calls`}</Badge>
+              {dropped > 0 && <Badge tone="warn">{`${dropped} dropped`}</Badge>}
+              <Badge tone={flags > 0 ? "danger" : "ok"}>{flags > 0 ? `${flags} with a safety flag` : "No safety flags"}</Badge>
+            </span>
+          ) : undefined
+        }
+      >
         <Table
           head={["When (IST)", "Caller", "Length", "Outcome", "Checks"]}
           rows={rows.map((row) => [
-            <Link key="t" href={`/dashboard/calls/${row.id}`} className="font-medium whitespace-nowrap text-ink underline decoration-line decoration-2 underline-offset-4 hover:decoration-accent">
-              {istTime(row.started_at)}
-            </Link>,
-            `${row.name ?? "Unknown"} · ${row.phone ? maskPhone(row.phone) : "no caller ID"}`,
-            row.duration_s ? `${Math.floor(row.duration_s / 60)}m ${row.duration_s % 60}s` : "-",
+            <span key="t" className="flex flex-col gap-0.5">
+              <Link href={`/dashboard/calls/${row.id}`} className="font-medium whitespace-nowrap text-ink underline decoration-line decoration-2 underline-offset-4 transition-colors duration-200 hover:decoration-accent">
+                {istTime(row.started_at)}
+              </Link>
+              {row.started_at && <span className="text-xs whitespace-nowrap text-ink-soft">{relTime(row.started_at, now)}</span>}
+            </span>,
+            <span key="w" className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {`${row.name ?? "Unknown"} · ${row.phone ? maskPhone(row.phone) : "no caller ID"}`}
+              {row.direction === "out" && <Badge tone="info">Outbound</Badge>}
+            </span>,
+            row.duration_s ? (
+              <MeterCell key="d" value={row.duration_s} max={longest}>{`${Math.floor(row.duration_s / 60)}m ${row.duration_s % 60}s`}</MeterCell>
+            ) : (
+              "-"
+            ),
             row.dropped ? (
               <Badge key="o" tone="warn">
                 Dropped
@@ -64,7 +89,7 @@ export default async function Calls({ searchParams }: { searchParams: Promise<{ 
             ) : (
               "-"
             ),
-            (row.flags?.price_figure?.length ?? 0) + (row.flags?.budget_question?.length ?? 0) > 0 ? (
+            flagged(row) ? (
               <Badge key="c" tone="danger">
                 ⚠️ Safety flag
               </Badge>

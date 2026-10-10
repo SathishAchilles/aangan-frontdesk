@@ -210,6 +210,9 @@ export function LiveDot({ tone = "ok" }: { tone?: "ok" | "danger" | "warn" | "ac
   );
 }
 
+// The one clock a render uses for "today" and for every "N min ago".
+export const renderedAt = () => new Date();
+
 // "12 min ago" / "in 40 min", relative to the time the page was rendered.
 export function relTime(date: Date | null, now: Date): string {
   if (!date) return "";

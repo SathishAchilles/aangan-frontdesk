@@ -3,7 +3,7 @@ import { SCHEMA_NAME } from "@/db/schema";
 import { costs, overview, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
 import { requireStaff } from "@/lib/auth";
-import { Badge, Card, inr, MeterCell, PageHeader, RangePicker, Stat, Table } from "../ui";
+import { Badge, Card, inr, MeterCell, PageHeader, pct, RangePicker, Stat, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +46,19 @@ export default async function Costs({ searchParams }: { searchParams: Promise<{ 
       </div>
       <div className="stagger grid gap-4 lg:grid-cols-2">
         <Card title="Usage" action={cost.total_inr > 0 ? <Badge>{`${Math.round(usageShare * 100)}% of the total`}</Badge> : undefined}>
-          <Table head={["Item", "Amount"]} rows={usage.map(([kind, amount]) => [KIND_LABEL[kind] ?? kind, <MeterCell key="a" value={amount} max={usageMax}>{inr(amount)}</MeterCell>])} empty="No usage recorded in this range." />
+          <Table
+            head={["Item", "Amount", "Share"]}
+            rows={usage.map(([kind, amount]) => [
+              KIND_LABEL[kind] ?? kind,
+              <MeterCell key="a" value={amount} max={usageMax}>
+                {inr(amount)}
+              </MeterCell>,
+              <Badge key="s">{cost.total_inr > 0 ? pct(amount / cost.total_inr) : "-"}</Badge>,
+            ])}
+            empty="No usage recorded in this range."
+          />
         </Card>
-        <Card title="Fixed plans">
+        <Card title="Fixed plans" action={cost.total_inr > 0 && fixed.length > 0 ? <Badge>{`${Math.round((1 - usageShare) * 100)}% of the total`}</Badge> : undefined}>
           <Table head={["Month", "Item", "Amount"]} rows={fixed.map((row) => [row.month, row.item, <MeterCell key="a" value={row.amount} max={fixedMax}>{inr(row.amount)}</MeterCell>])} empty="No fixed costs entered. Add them under Settings." />
         </Card>
       </div>

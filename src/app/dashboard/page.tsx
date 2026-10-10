@@ -6,12 +6,9 @@ import { loadSettings } from "@/lib/settings/store";
 import { requireStaff } from "@/lib/auth";
 import type { DayKey } from "@/lib/rules/time";
 import { AttentionPanel, TodayStrip } from "./attention-panel";
-import { Card, ColumnChart, CRITERION_LABEL, inr, Meter, MeterCell, Notice, OUTCOME_LABEL, PageHeader, pct, RangePicker, Stat, Table } from "./ui";
+import { Card, ColumnChart, CRITERION_LABEL, inr, Meter, MeterCell, Notice, OUTCOME_LABEL, PageHeader, pct, RangePicker, renderedAt, Stat, Table } from "./ui";
 
 export const dynamic = "force-dynamic";
-
-// The one clock this render uses for "today" and for every "N min ago".
-const renderedAt = () => new Date();
 
 export default async function Overview({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; error?: string }> }) {
   await requireStaff();
