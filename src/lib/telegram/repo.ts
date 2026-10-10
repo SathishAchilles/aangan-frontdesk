@@ -115,7 +115,8 @@ export function createDispatchRepo(database: Db, appUrl: string): DispatchRepo {
         .from(tasks)
         .leftJoin(enquiries, eq(enquiries.id, tasks.enquiryId))
         .leftJoin(callers, eq(callers.id, enquiries.callerId))
-        .where(and(isNull(tasks.chatId), isNull(tasks.doneAt), sql`${tasks.kind} <> 'nurture' or ${tasks.dueAt} <= now()`))
+        // drizzle does not bracket raw sql chunks inside and(), so the OR must be bracketed here.
+        .where(and(isNull(tasks.chatId), isNull(tasks.doneAt), sql`(${tasks.kind} <> 'nurture' or ${tasks.dueAt} <= now())`))
         .limit(limit);
       return rows.map((row) => {
         const payload = (row.payload ?? {}) as { phone?: string; summary?: string; call_id?: string };

@@ -58,3 +58,22 @@ describe("follow-ups against the database", () => {
     expect(again.escalations).toBe(0);
   });
 });
+
+describe("telegram dispatch selection", () => {
+  it("never re-sends a task that is done or already posted, even when it is past due", async () => {
+    const { createDispatchRepo } = await import("../../src/lib/telegram/repo");
+    const sql = testSql();
+    const t = (name: string) => sql(`${TEST_SCHEMA}.${name}`);
+    await sql`delete from ${t("tasks")}`;
+    await sql`insert into ${t("tasks")} (kind, reason, due_at, done_at, chat_id, created_at) values
+      ('callback', 'done and posted', now() - interval '1 hour', now(), 1, now() - interval '2 hours'),
+      ('callback', 'posted, not done', now() - interval '1 hour', null, 1, now() - interval '2 hours'),
+      ('urgent', 'done, never posted', now() - interval '1 hour', now(), null, now() - interval '2 hours'),
+      ('callback', 'waiting to post', now() - interval '1 hour', null, null, now() - interval '2 hours'),
+      ('nurture', 'nurture not due', now() + interval '1 day', null, null, now())`;
+    const pending = await createDispatchRepo(db, "https://example.test").pendingTasks(20);
+    expect(pending.map((task) => task.reason)).toEqual(["waiting to post"]);
+    await sql`delete from ${t("tasks")}`;
+    await sql.end();
+  });
+});
