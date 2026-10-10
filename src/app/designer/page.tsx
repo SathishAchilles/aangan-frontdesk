@@ -56,8 +56,12 @@ function ConsultList({ title, meetings, leads, as, empty }: { title: string; mee
                     {meeting.locality ? ` · ${meeting.locality}` : ""}
                   </span>
                   {meeting.scope && <span className="truncate text-xs text-ink-soft">{meeting.scope}</span>}
+                  {meeting.status === "rescheduled" && (
+                    <span className="mt-1">
+                      <Badge tone="warn">Rescheduled</Badge>
+                    </span>
+                  )}
                 </span>
-                {meeting.status === "rescheduled" && <Badge tone="warn">Rescheduled</Badge>}
               </li>
             );
           })}
@@ -116,7 +120,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<Pa
         {tiles}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
+      <div className="grid items-start gap-6 xl:grid-cols-[1.35fr_1fr]">
         <Card>
           <div id="waiting" className="scroll-mt-6" />
           <SectionTitle title="Waiting for you" hint="Posted to the designers and not accepted yet: yours, or unassigned in your consultation types. First to accept wins, here or on Telegram." />
@@ -160,7 +164,7 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<Pa
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card>
           <SectionTitle title="Callbacks on your leads" hint="Open callback tasks the front desk logged for enquiries you own." />
           {callbacks.length === 0 ? (

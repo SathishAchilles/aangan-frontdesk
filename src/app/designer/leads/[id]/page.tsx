@@ -19,6 +19,8 @@ const FLAG_TEXT: Record<string, string> = {
   repeat_caller: "Has called before",
 };
 
+// "+919800000101" -> "+91 98000 00101", easier to read out; the tel: link keeps the raw number.
+const spaced = (e164: string) => e164.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2");
 const duration = (seconds: number | null) => (seconds ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : null);
 
 export default async function LeadPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ as?: string; done?: string; by?: string }> }) {
@@ -63,7 +65,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                 <path d="M6.5 3.5h-2a1 1 0 0 0-1 1c0 6.6 5.4 12 12 12a1 1 0 0 0 1-1v-2l-3-1.5-1.5 1.5a8 8 0 0 1-5-5L8.5 7 7 3.5z" />
               </svg>
               <span className="sr-only">Call </span>
-              {phone}
+              {spaced(phone)}
             </a>
           ) : (
             <span className="rounded-full border border-line bg-surface px-4 py-2 font-mono text-sm text-ink-muted">{lead.phoneMasked ?? "No caller ID"}</span>
@@ -101,7 +103,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                         {CONSULT_LABEL[booking.consultType] ?? "Consultation"} · with {booking.designer ?? "no designer yet"}
                       </span>
                     </span>
-                    {booking.status !== "booked" ? <Badge tone={booking.status === "rescheduled" ? "warn" : "neutral"}>{booking.status}</Badge> : booking === upcoming ? <Badge tone="accent">Upcoming</Badge> : null}
+                    {booking.status !== "booked" ? <Badge tone={booking.status === "rescheduled" ? "warn" : "neutral"}>{booking.status === "rescheduled" ? "Rescheduled" : "Cancelled"}</Badge> : booking === upcoming ? <Badge tone="accent">Upcoming</Badge> : null}
                   </li>
                 ))}
               </ul>

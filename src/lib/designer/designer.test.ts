@@ -93,7 +93,7 @@ describe("performance", () => {
   it("uses daily buckets for a week", () => {
     expect(result.bucketDays).toBe(1);
     expect(result.buckets).toHaveLength(7);
-    expect(bucketsFor({ from: "2026-01-01", to: "2026-07-01" }).days).toBe(7);
+    expect(bucketsFor({ from: "2026-09-01", to: "2026-10-01" })).toMatchObject({ days: 7, starts: ["2026-09-01", "2026-09-08", "2026-09-15", "2026-09-22", "2026-09-29"] });
   });
   it("computes the designer's own numbers", () => {
     expect(kpi("median_accept").mine).toBe(35);

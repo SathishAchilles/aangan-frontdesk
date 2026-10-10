@@ -214,7 +214,7 @@ export function Sparkline({ mine, studio, label }: { mine: (number | null)[]; st
     return d;
   };
   const points = mine.map((value, i) => (value === null ? null : ([x(i), y(value)] as const))).filter((p): p is readonly [number, number] => p !== null);
-  const area = points.length > 1 ? `M${points[0][0].toFixed(1)} ${height - pad}${points.map(([px, py]) => `L${px.toFixed(1)} ${py.toFixed(1)}`).join("")}L${points[points.length - 1][0].toFixed(1)} ${height - pad}Z` : "";
+  const area = points.length > 1 && points.length === mine.length ? `M${points[0][0].toFixed(1)} ${height - pad}${points.map(([px, py]) => `L${px.toFixed(1)} ${py.toFixed(1)}`).join("")}L${points[points.length - 1][0].toFixed(1)} ${height - pad}Z` : "";
   const last = points[points.length - 1];
   return (
     <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} className="h-16 w-full overflow-visible" preserveAspectRatio="none">

@@ -31,10 +31,10 @@ export function median(values: number[]): number | null {
 const round1 = (value: number | null) => (value === null ? null : Math.round(value * 10) / 10);
 const share = (part: number, whole: number) => (whole > 0 ? part / whole : null);
 
-// Daily points for up to two months, weekly beyond that.
+// Daily points for up to three weeks, weekly beyond that: a month of daily points is mostly noise.
 export function bucketsFor(range: Range): { starts: string[]; days: number } {
   const span = Math.max(1, Math.round((Date.parse(`${range.to}T00:00:00Z`) - Date.parse(`${range.from}T00:00:00Z`)) / DAY_MS));
-  const days = span <= 62 ? 1 : 7;
+  const days = span <= 21 ? 1 : 7;
   const starts: string[] = [];
   for (let offset = 0; offset < span; offset += days) starts.push(addDays(range.from, offset));
   return { starts, days };
