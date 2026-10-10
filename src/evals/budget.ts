@@ -2,8 +2,10 @@
 
 // USD per million tokens. Check https://ai.google.dev/gemini-api/docs/pricing before relying on these.
 export const MODEL_PRICES_USD_PER_M: Record<string, { input: number; output: number }> = {
-  "gemini-2.5-flash": { input: 0.3, output: 2.5 },
-  "gemini-2.5-pro": { input: 1.25, output: 10 },
+  // Promotional price until 2026-12-31; doubles to 1.5 / 7.5 from 2027-01-01.
+  "gemini-3.8-flash": { input: 0.75, output: 3.75 },
+  "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
+  "gemini-3.1-pro-preview": { input: 2, output: 12 },
 };
 
 export const INR_PER_USD = 88;

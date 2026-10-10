@@ -18,8 +18,8 @@ export const envSchema = z.object({
     .regex(/^\+[1-9]\d{7,14}$/, "must be E.164, for example +919876543210")
     .optional(),
   GEMINI_API_KEY: optionalString,
-  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
-  GEMINI_JUDGE_MODEL: z.string().default("gemini-2.5-pro"),
+  GEMINI_MODEL: z.string().default("gemini-3.8-flash"),
+  GEMINI_JUDGE_MODEL: z.string().default("gemini-3.1-pro-preview"),
   CALCOM_API_KEY: optionalString,
   CALCOM_WEBHOOK_SECRET: optionalString,
   TELEGRAM_BOT_TOKEN: optionalString,

@@ -1,6 +1,7 @@
 import type { Budget } from "./budget";
 import type { EvalReport } from "./types";
 import { buildReport } from "./report";
+import { agentSim } from "./runners/agent-sim";
 import { dataIntegrity } from "./runners/data-integrity";
 import { gateAccuracy } from "./runners/gate-accuracy";
 import { slotCompliance } from "./runners/slot-compliance";
@@ -32,4 +33,5 @@ export const EVALS: Record<string, EvalRunner> = {
   "tool-latency": toolLatency,
   "tool-leakage": toolLeakage,
   "slot-compliance": slotCompliance,
+  "agent-sim": agentSim,
 };

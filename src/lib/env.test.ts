@@ -8,7 +8,7 @@ describe("parseEnv", () => {
       FRONT_DESK_PHONE: "+918056203528",
     });
     expect(env.DB_SCHEMA).toBe("aangan");
-    expect(env.GEMINI_MODEL).toBe("gemini-2.5-flash");
+    expect(env.GEMINI_MODEL).toBe("gemini-3.8-flash");
     expect(env.EVAL_BUDGET_INR).toBe(300);
     expect(env.APP_URL).toBe("https://aangan-frontdesk.vercel.app");
   });

@@ -65,7 +65,7 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
   // Costs (copied onto each cost line when recorded)
   { key: "cost_agent_inr_per_min", type: "number", default: 4.92, min: 0, max: 100, source: "Vaani per-minute estimate from the as-built README; confirm on the Vaani billing page." },
   { key: "cost_telephony_inr_per_min", type: "number", default: 0, min: 0, max: 100, source: "Vaani-provisioned number; set when the Vobiz rate is known." },
-  { key: "cost_ai_usd_per_m", type: "json", default: { input: 0.3, output: 2.5 }, source: "Gemini 2.5 Flash list price; check ai.google.dev/gemini-api/docs/pricing." },
+  { key: "cost_ai_usd_per_m", type: "json", default: { input: 0.75, output: 3.75 }, source: "Gemini 3.8 Flash promotional price to 2026-12-31 (doubles from 2027-01-01); ai.google.dev/gemini-api/docs/pricing." },
   { key: "inr_per_usd", type: "number", default: 88, min: 50, max: 150, source: "Conversion rate for AI token costs." },
 
   // Privacy
