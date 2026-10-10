@@ -23,8 +23,13 @@ const TONE_LABEL = { danger: "Urgent", warn: "Soon", info: "Upcoming" };
 const duration = (minutes: number) => {
   const m = Math.abs(minutes);
   if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+  if (m < 24 * 60) {
+    const h = Math.floor(m / 60);
+    return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+  }
+  const d = Math.floor(m / 1440);
+  const h = Math.floor((m % 1440) / 60);
+  return h ? `${d} d ${h} h` : `${d} d`;
 };
 
 function when(item: AttentionItem, now: Date): string {
