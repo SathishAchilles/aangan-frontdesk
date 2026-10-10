@@ -28,7 +28,8 @@ async function postedHandoff(deps: WebActionDeps, where: { handoffId?: string; e
     select h.id, h.chat_id, h.message_id, h.accepted_at, st.name as accepter
     from ${sql(`${schema}.handoffs`)} h left join ${sql(`${schema}.staff`)} st on st.id = h.accepted_by
     where ${where.handoffId ? sql`h.id = ${where.handoffId}` : sql`h.enquiry_id = ${where.enquiryId!}`}`;
-  return row ?? null;
+  // bigint comes back from postgres.js as a string; Telegram chat ids fit a JS number.
+  return row ? { ...row, chat_id: row.chat_id === null ? null : Number(row.chat_id) } : null;
 }
 
 // Best effort: the database row is the record, a failed edit only leaves the chat a step behind.
