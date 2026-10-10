@@ -42,6 +42,15 @@ describe("dashboard metrics on the fixture month", () => {
     expect(data.median_accept_minutes).toBe(10);
   });
 
+  it("spreads fixed monthly plans by day for ranges shorter than a month", async () => {
+    const counts = { calls: 1, qualified: 1, booked: 1, won: 1 };
+    // Rs 2,000 of September plans; 15 of September's 30 days -> Rs 1,000.
+    expect((await costs(sql, TEST_SCHEMA, { from: "2026-09-01", to: "2026-09-16" }, counts)).fixed_inr).toBe(1000);
+    // A range crossing into October (no October plans) still charges only its September days.
+    expect((await costs(sql, TEST_SCHEMA, { from: "2026-09-16", to: "2026-10-16" }, counts)).fixed_inr).toBe(1000);
+    expect((await costs(sql, TEST_SCHEMA, { from: "2026-08-01", to: "2026-09-01" }, counts)).fixed_inr).toBe(0);
+  });
+
   it("computes costs, including the spec example (80 qualified leads, Rs 8,000 -> Rs 100)", async () => {
     const cost = await costs(sql, TEST_SCHEMA, FIXTURE_RANGE, { calls: 100, qualified: 80, booked: 40, won: 12 });
     expect(cost.total_inr).toBe(FIXTURE_EXPECTED.total_cost);

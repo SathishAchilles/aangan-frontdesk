@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { bookings, callers, calls, enquiries, handoffs, staff, tasks } from "@/db/schema";
 import type { FollowupRepo } from "./run";
@@ -26,11 +26,21 @@ export function createFollowupRepo(database: Db): FollowupRepo {
     },
     async callbacksWaiting() {
       return database
-        .select({ id: tasks.id, dueAt: tasks.dueAt, escalatedAt: tasks.escalatedAt, reason: sql<string>`coalesce(${tasks.reason}, '')`, callerName: callers.name, phone: callers.phoneE164 })
+        .select({
+          id: tasks.id,
+          kind: tasks.kind,
+          dueAt: tasks.dueAt,
+          escalatedAt: tasks.escalatedAt,
+          reason: sql<string>`coalesce(${tasks.reason}, '')`,
+          callerName: callers.name,
+          // Existing-client tasks have no enquiry; their number is in the payload.
+          phone: sql<string | null>`coalesce(${callers.phoneE164}, ${tasks.payload}->>'phone')`,
+        })
         .from(tasks)
         .leftJoin(enquiries, eq(enquiries.id, tasks.enquiryId))
         .leftJoin(callers, eq(callers.id, enquiries.callerId))
-        .where(and(eq(tasks.kind, "callback"), isNull(tasks.doneAt), isNull(tasks.escalatedAt), isNotNull(tasks.dueAt)));
+        // Promised callbacks to new callers and to existing clients with a problem both escalate when late.
+        .where(and(inArray(tasks.kind, ["callback", "urgent"]), isNull(tasks.doneAt), isNull(tasks.escalatedAt), isNotNull(tasks.dueAt)));
     },
     async claimTaskEscalation(id, now) {
       const rows = await database.update(tasks).set({ escalatedAt: now }).where(and(eq(tasks.id, id), isNull(tasks.escalatedAt))).returning({ id: tasks.id });

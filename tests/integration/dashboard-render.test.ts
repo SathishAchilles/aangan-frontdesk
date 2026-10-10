@@ -37,6 +37,9 @@ describe("dashboard pages render on the fixture month", () => {
     const out = await html(Page({ searchParams: range }));
     expect(out).toContain("100");
     expect(out).toMatch(/Rs|₹/);
+    // 12 won projects in the fixture month x Rs 11 lakh average.
+    expect(out).toContain("Pipeline value (won)");
+    expect(out).toContain("1,32,00,000");
   });
 
   it("calls list masks phone numbers", async () => {

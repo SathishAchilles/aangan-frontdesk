@@ -1,5 +1,6 @@
 // One pass of the follow-ups job. Every action is claimed first with a conditional update, so two
 // overlapping runs never send the same reminder twice; a failed send releases its claim.
+import { describeCallback } from "../rules/office-time";
 import type { RulesConfig } from "../rules/config";
 import type { TelegramClient } from "../telegram/client";
 import type { StaffChats } from "../telegram/dispatch";
@@ -7,7 +8,7 @@ import { reminderMessage } from "../telegram/templates";
 import { acceptanceAction, callbackOverdue, droppedCallbackDue, nurtureDue, outcomeNudgeDue } from "./rules";
 
 export type HandoffWaiting = { id: string; enquiryId: string; postedAt: Date; remindedAt: Date | null; escalatedAt: Date | null; callerName: string | null; designerName: string | null };
-export type CallbackWaiting = { id: string; dueAt: Date | null; escalatedAt: Date | null; reason: string; callerName: string | null; phone: string | null };
+export type CallbackWaiting = { id: string; kind: string; dueAt: Date | null; escalatedAt: Date | null; reason: string; callerName: string | null; phone: string | null };
 export type ConsultWaiting = { enquiryId: string; startAt: Date; nudges: number; lastNudgeAt: Date | null; hasResult: boolean; callerName: string | null; designerName: string | null };
 export type NurtureWaiting = { enquiryId: string; nurtureDueAt: Date | null; hasTask: boolean; callerName: string | null };
 export type DroppedCall = { callId: string; enquiryId: string | null; endedAt: Date | null; callbackPlacedAt: Date | null; redialled: boolean; phone: string | null; callerName: string | null };
@@ -77,7 +78,8 @@ export async function runFollowups(deps: FollowupDeps): Promise<FollowupSummary>
 
   for (const task of await deps.repo.callbacksWaiting()) {
     if (!callbackOverdue(task, now) || !(await deps.repo.claimTaskEscalation(task.id, now))) continue;
-    const sent = await sendTo(deps, [deps.chats.founder], `🚨 <b>Callback overdue:</b> ${task.callerName ?? "caller"}${task.phone ? ` (${task.phone})` : ""} - ${task.reason}`).catch(() => false);
+    const label = task.kind === "urgent" ? "Client callback overdue" : "Callback overdue";
+    const sent = await sendTo(deps, [deps.chats.founder], `🚨 <b>${label}:</b> ${task.callerName ?? (task.kind === "urgent" ? "existing client" : "caller")}${task.phone ? ` (${task.phone})` : ""} - ${task.reason}`).catch(() => false);
     if (sent) summary.callback_escalations += 1;
     else await deps.repo.releaseTaskEscalation(task.id);
   }
@@ -103,7 +105,10 @@ export async function runFollowups(deps: FollowupDeps): Promise<FollowupSummary>
     const placed = deps.placeCallback ? await deps.placeCallback(call).catch(() => false) : false;
     if (placed) summary.callbacks_placed += 1;
     else {
-      await deps.repo.createTask({ enquiryId: call.enquiryId, kind: "callback", reason: "Call dropped before the enquiry was finished", payload: { call_id: call.callId, phone: call.phone }, dueAt: now });
+      // Same promise as any other callback: within the callback window in office hours, otherwise the
+      // next opening. "Due now" would escalate every dropped call, including at night.
+      const dueAt = describeCallback(now, deps.rules.office, deps.rules.callbackWithinMin, deps.rules.afterHoursCallbackTime).at;
+      await deps.repo.createTask({ enquiryId: call.enquiryId, kind: "callback", reason: "Call dropped before the enquiry was finished", payload: { call_id: call.callId, phone: call.phone }, dueAt });
       summary.callback_tasks += 1;
     }
   }

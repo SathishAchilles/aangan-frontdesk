@@ -23,7 +23,7 @@ describe("designer pages", () => {
 describe("designer actions", () => {
   const source = readFileSync(join(__dirname, "actions.ts"), "utf8");
   const actions = [...source.matchAll(/export async function (\w+)\([^)]*\) \{\n([^]*?)\n\}/g)];
-  it("finds the actions", () => expect(actions.map((match) => match[1]).sort()).toEqual(["acceptHandoffAction", "recordResultAction"]));
+  it("finds the actions", () => expect(actions.map((match) => match[1]).sort()).toEqual(["acceptHandoffAction", "completeCallbackAction", "recordResultAction"]));
   it.each(actions.map((match) => [match[1], match[2]]))("%s takes the designer from the session first", (_name, body) => {
     expect(body.trimStart()).toMatch(/^const designer = await requireActingDesigner\(\);/);
   });

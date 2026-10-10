@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db, rawSql } from "../../src/db/client";
 import { requireActingDesigner, requireDesignerView } from "../../src/lib/designer/access";
 import { leadDetail, myLeads, waitingHandoffs } from "../../src/lib/designer/queries";
-import { acceptOnWeb, recordResultOnWeb, type WebActionDeps } from "../../src/lib/designer/web-actions";
+import { acceptOnWeb, completeCallbackOnWeb, recordResultOnWeb, type WebActionDeps } from "../../src/lib/designer/web-actions";
 import { handleCallbackQuery } from "../../src/lib/telegram/actions";
 import type { InlineButton, TelegramClient } from "../../src/lib/telegram/client";
 import { createTelegramActionRepo } from "../../src/lib/telegram/repo";
@@ -237,6 +237,21 @@ describe("won and lost on the web", () => {
     expect(edit?.html).toContain("Accepted by Designer 3");
     expect(edit?.html).toContain("🏆 <b>Won</b> · recorded by Designer 3");
     expect(edit?.buttons).toBeUndefined();
+  });
+});
+
+describe("callbacks on the web", () => {
+  it("lets the owner mark a callback done once, through the Telegram Done logic", async () => {
+    const [task] = await sql<{ id: string }[]>`
+      insert into ${t("tasks")} (enquiry_id, kind, reason, due_at, chat_id, created_at)
+      values (${leads.d.enquiry}, 'callback', 'Caller asked for a person', ${new Date(Date.now() - 30 * MIN)}, -1002, ${new Date(Date.now() - 60 * MIN)}) returning id`;
+    expect(await completeCallbackOnWeb(deps(), people.d2, task.id)).toEqual({ ok: false, reason: "not-allowed" });
+    expect(await completeCallbackOnWeb(deps(), people.d3, "not-a-uuid")).toEqual({ ok: false, reason: "not-allowed" });
+    expect(await completeCallbackOnWeb(deps(), people.d3, task.id)).toEqual({ ok: true });
+    const [row] = await sql<{ done_at: Date | null; done_by: string | null }[]>`select done_at, done_by from ${t("tasks")} where id = ${task.id}`;
+    expect(row.done_at).not.toBeNull();
+    expect(row.done_by).toBe(people.d3.id);
+    expect(await completeCallbackOnWeb(deps(), people.d3, task.id)).toEqual({ ok: false, reason: "already-done" });
   });
 });
 

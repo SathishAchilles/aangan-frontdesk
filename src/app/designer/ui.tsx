@@ -7,7 +7,7 @@ import { withAs } from "@/lib/designer/links";
 import type { NoteView } from "@/lib/designer/note";
 import { delta, type Kpi } from "@/lib/designer/performance";
 import { Badge, buttonPrimary, buttonSecondary, pct } from "../dashboard/ui";
-import { acceptHandoffAction, recordResultAction } from "./actions";
+import { acceptHandoffAction, completeCallbackAction, recordResultAction } from "./actions";
 import { PendingButton } from "./pending-button";
 
 const IST = { timeZone: "Asia/Kolkata" } as const;
@@ -27,6 +27,8 @@ const NOTICES: Record<string, { tone: "ok" | "warn" | "danger"; text: (by?: stri
   lost: { tone: "ok", text: () => "Recorded as lost." },
   "already-recorded": { tone: "warn", text: () => "A result was already recorded for this enquiry." },
   "not-allowed": { tone: "danger", text: () => "That action is not open to you for this enquiry." },
+  "callback-done": { tone: "ok", text: () => "Callback marked done." },
+  "already-done": { tone: "warn", text: () => "That callback was already marked done." },
 };
 
 export function Flash({ done, by }: { done?: string; by?: string }) {
@@ -91,6 +93,24 @@ export function AcceptButton({ handoffId, back, readOnly, compact = false }: { h
       <input type="hidden" name="back" value={back} />
       <PendingButton pendingText="Accepting…" className={`${buttonPrimary} ${compact ? "px-3.5 py-1.5" : ""}`}>
         Accept
+      </PendingButton>
+    </form>
+  );
+}
+
+export function CallbackDoneButton({ taskId, back, readOnly }: { taskId: string; back: string; readOnly: boolean }) {
+  if (readOnly)
+    return (
+      <button type="button" disabled className={disabledButton} title="Read-only while viewing as a designer">
+        Done
+      </button>
+    );
+  return (
+    <form action={completeCallbackAction}>
+      <input type="hidden" name="task" value={taskId} />
+      <input type="hidden" name="back" value={back} />
+      <PendingButton pendingText="Saving…" className={`${buttonSecondary} px-3.5 py-1.5`}>
+        Done
       </PendingButton>
     </form>
   );

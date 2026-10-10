@@ -315,6 +315,11 @@ export function FunnelCard({ data }: { data: Insights }) {
       aside={<Tag>{`${data.days}d`}</Tag>}
     >
       <FunnelBars steps={data.funnel.map((step) => ({ label: STAGE_LABEL[step.stage], value: step.value, share: step.share, stepRate: step.step_rate }))} />
+      <p className="mt-4 flex flex-wrap items-baseline justify-between gap-2 rounded-2xl bg-surface-2 px-4 py-3 text-sm">
+        <span className="text-ink-muted">Pipeline value (won)</span>
+        <span className="tabular-nums font-medium text-ink">{inr(data.current.pipeline_value_inr)}</span>
+        <span className="w-full text-xs text-ink-soft">Won projects × average project value (set in Settings)</span>
+      </p>
     </Panel>
   );
 }

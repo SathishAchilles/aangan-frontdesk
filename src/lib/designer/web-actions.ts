@@ -19,6 +19,7 @@ export type Actor = { id: string; name: string };
 
 export type AcceptOutcome = { ok: true; enquiryId: string; telegramUpdated: boolean } | { ok: false; reason: "not-allowed" } | { ok: false; reason: "taken"; acceptedBy: string | null };
 export type ResultOutcome = { ok: true } | { ok: false; reason: "not-allowed" | "already-recorded" };
+export type CallbackOutcome = { ok: true } | { ok: false; reason: "not-allowed" | "already-done" };
 
 type PostedHandoff = { id: string; chat_id: number | null; message_id: number | null; accepted_at: Date | null; accepter: string | null };
 
@@ -91,4 +92,24 @@ export async function recordResultOnWeb(deps: WebActionDeps, actor: Actor, enqui
     return { html: `${accepted}\n\n${resultLine(result, actor.name)}` };
   });
   return { ok: true };
+}
+
+// Marks a callback on one of the designer's own leads as done, through the same repo call as the
+// Telegram Done button (first press wins). The Telegram task message is not edited from the web;
+// a later Done press there is answered as already done.
+export async function completeCallbackOnWeb(deps: WebActionDeps, actor: Actor, taskIdInput: string): Promise<CallbackOutcome> {
+  const taskId = validUuid(taskIdInput);
+  if (!taskId) return { ok: false, reason: "not-allowed" };
+  const { sql, schema } = deps;
+  const s = (name: string) => sql(`${schema}.${name}`);
+  const [task] = await sql<{ id: string; done_at: Date | null }[]>`
+    select t.id, t.done_at
+    from ${s("tasks")} t
+    join ${s("enquiries")} e on e.id = t.enquiry_id
+    left join ${s("handoffs")} h on h.enquiry_id = e.id
+    where t.id = ${taskId} and t.kind = 'callback' and ${ownedBy(sql, actor.id)}`;
+  if (!task) return { ok: false, reason: "not-allowed" };
+  if (task.done_at) return { ok: false, reason: "already-done" };
+  const done = await createTelegramActionRepo(deps.db).completeTask(taskId, actor.id);
+  return done ? { ok: true } : { ok: false, reason: "already-done" };
 }

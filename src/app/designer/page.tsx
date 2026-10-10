@@ -7,7 +7,7 @@ import { requireDesignerView } from "@/lib/designer/access";
 import { withAs } from "@/lib/designer/links";
 import { type Activity, bookingLeads, myCallbacks, myLeads, recentActivity, waitingHandoffs } from "@/lib/designer/queries";
 import { Badge, buttonSecondary, Card, PageHeader, relTime, renderedAt, Stat } from "../dashboard/ui";
-import { AcceptButton, CONSULT_LABEL, Empty, firstName, Flash, istDay, istHm, istWhen, SectionTitle, ViewAsBanner } from "./ui";
+import { AcceptButton, CallbackDoneButton, CONSULT_LABEL, Empty, firstName, Flash, istDay, istHm, istWhen, SectionTitle, ViewAsBanner } from "./ui";
 
 export const dynamic = "force-dynamic";
 
@@ -183,11 +183,14 @@ export default async function MyDay({ searchParams }: { searchParams: Promise<Pa
                     )}
                     {task.reason && <span className="text-sm text-ink-muted">{task.reason}</span>}
                   </span>
-                  {task.dueAt && (
-                    <Badge tone={task.dueAt.getTime() <= now.getTime() ? "warn" : "neutral"}>
-                      {task.dueAt.getTime() <= now.getTime() ? "Was due" : "Due"} {istWhen(task.dueAt)}
-                    </Badge>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {task.dueAt && (
+                      <Badge tone={task.dueAt.getTime() <= now.getTime() ? "warn" : "neutral"}>
+                        {task.dueAt.getTime() <= now.getTime() ? "Was due" : "Due"} {istWhen(task.dueAt)}
+                      </Badge>
+                    )}
+                    <CallbackDoneButton taskId={task.taskId} back="/designer" readOnly={readOnly} />
+                  </span>
                 </li>
               ))}
             </ul>

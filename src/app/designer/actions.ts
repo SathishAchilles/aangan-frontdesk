@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { db, rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { requireActingDesigner } from "@/lib/designer/access";
-import { acceptOnWeb, recordResultOnWeb, type WebActionDeps } from "@/lib/designer/web-actions";
+import { acceptOnWeb, completeCallbackOnWeb, recordResultOnWeb, type WebActionDeps } from "@/lib/designer/web-actions";
 import { createTelegramClient } from "@/lib/telegram/client";
 
 function deps(): WebActionDeps {
@@ -46,4 +46,11 @@ export async function recordResultAction(formData: FormData) {
   revalidatePath("/designer", "layout");
   if (outcome.ok) redirect(back(formData, result!));
   redirect(back(formData, outcome.reason));
+}
+
+export async function completeCallbackAction(formData: FormData) {
+  const designer = await requireActingDesigner();
+  const outcome = await completeCallbackOnWeb(deps(), designer, String(formData.get("task") ?? ""));
+  revalidatePath("/designer", "layout");
+  redirect(back(formData, outcome.ok ? "callback-done" : outcome.reason));
 }

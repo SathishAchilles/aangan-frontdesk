@@ -113,9 +113,16 @@ export async function costs(sql: postgres.Sql, schema: string, range: Range, cou
   const rows = await sql<{ kind: string; amount: number }[]>`
     select kind, coalesce(sum(amount_inr), 0)::float as amount from ${s("cost_lines")}
     where recorded_at >= ${ist(range.from)} and recorded_at < ${ist(range.to)} group by kind`;
+  // Fixed monthly plans are spread by day: a month counts in proportion to the days of the range
+  // that fall inside it, so short ranges are not charged whole months.
   const [fixed] = await sql<{ amount: number }[]>`
-    select coalesce(sum(amount_inr), 0)::float as amount from ${s("fixed_costs")}
-    where month >= date_trunc('month', ${range.from}::date) and month < ${range.to}::date`;
+    select coalesce(sum(
+      amount_inr
+      * greatest(0, least((month + interval '1 month')::date, ${range.to}::date) - greatest(month, ${range.from}::date))
+      / extract(day from (month + interval '1 month' - interval '1 day'))
+    ), 0)::float as amount
+    from ${s("fixed_costs")}
+    where month < ${range.to}::date and month + interval '1 month' > ${range.from}::date`;
   const by_kind = Object.fromEntries(rows.map((row) => [row.kind, Math.round(row.amount * 100) / 100]));
   const variable = rows.reduce((sum, row) => sum + row.amount, 0);
   const total = variable + fixed.amount;

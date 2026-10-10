@@ -53,7 +53,7 @@ export const weekSimulation: EvalRunner = async ({ budget }) => {
       return true;
     },
     releaseHandoff: async (id, field) => void (handoffs.find((row) => row.id === id)![field] = null),
-    callbacksWaiting: async () => callbacks.filter((c) => !(c.doneAt && c.doneAt <= now) && !c.escalatedAt).map((c) => ({ id: c.id, dueAt: c.dueAt, escalatedAt: c.escalatedAt, reason: "callback", callerName: c.id, phone: null })),
+    callbacksWaiting: async () => callbacks.filter((c) => !(c.doneAt && c.doneAt <= now) && !c.escalatedAt).map((c) => ({ id: c.id, kind: "callback", dueAt: c.dueAt, escalatedAt: c.escalatedAt, reason: "callback", callerName: c.id, phone: null })),
     claimTaskEscalation: async (id, at) => {
       const c = callbacks.find((row) => row.id === id)!;
       if (c.escalatedAt) return false;
