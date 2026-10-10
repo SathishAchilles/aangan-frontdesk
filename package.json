@@ -20,7 +20,8 @@
     "test:coverage": "vitest run --dir src --coverage --coverage.include='src/lib/rules/**' --coverage.exclude='**/*.test.ts' --coverage.thresholds.lines=90",
     "setting:set": "tsx --env-file-if-exists=.env.local scripts/set-setting.ts",
     "telegram:setup": "tsx --env-file-if-exists=.env.local scripts/telegram-setup.ts",
-    "staff:add": "tsx --env-file-if-exists=.env.local scripts/add-staff.ts"
+    "staff:add": "tsx --env-file-if-exists=.env.local scripts/add-staff.ts",
+    "crm:check": "tsx --env-file-if-exists=.env.local scripts/crm-live-check.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
