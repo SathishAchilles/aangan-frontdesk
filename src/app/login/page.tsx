@@ -22,14 +22,15 @@ const MESSAGES: Record<string, string> = {
   "not-staff": "This account is not on the Aangan staff list. Ask an admin to add you.",
 };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string }> }) {
-  const { error, next } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; next?: string; confirmed?: string }> }) {
+  const { error, next, confirmed } = await searchParams;
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-6 px-4">
       <div>
         <h1 className="text-2xl font-semibold">Aangan Frontdesk</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Staff sign in</p>
       </div>
+      {confirmed && <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">Email confirmed. Sign in with your password.</p>}
       {error && MESSAGES[error] && <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{MESSAGES[error]}</p>}
       <form action={signIn} className="flex flex-col gap-3">
         <input type="hidden" name="next" value={next ?? "/dashboard"} />

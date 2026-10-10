@@ -24,7 +24,12 @@ async function main() {
   if (!padded.ok) throw new Error(padded.error);
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, { auth: { persistSession: false } });
   let userId: string | undefined;
-  const signUp = await supabase.auth.signUp({ email, password: padded.authPassword });
+  const signUp = await supabase.auth.signUp({
+    email,
+    password: padded.authPassword,
+    // Must match an entry in Supabase Auth > URL Configuration > Redirect URLs, or Supabase falls back to the Site URL.
+    options: { emailRedirectTo: `${process.env.APP_URL ?? "https://aangan-frontdesk.vercel.app"}/login?confirmed=1` },
+  });
   if (signUp.error && !/already registered|already exists/i.test(signUp.error.message)) throw signUp.error;
   userId = signUp.data.user?.id;
   if (!userId) {
