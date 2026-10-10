@@ -10,6 +10,8 @@ const SLOT_MIN = 30;
 const SLOTS = (DAY_END_MIN - DAY_START_MIN) / SLOT_MIN;
 const SLOT_REM = 2.5;
 const GRID_REM = SLOTS * SLOT_REM;
+// Percent of a column each overlapping lane is shifted right, so an earlier meeting stays visible.
+const MIN_CASCADE_STEP = 22;
 
 export type CalendarParams = { view?: string; week?: string; date?: string; designer?: string; from?: string; to?: string };
 export type CalendarView = { view: "week" | "day"; start: string; end: string; days: string[]; designer?: string; today: string };
@@ -139,8 +141,8 @@ function Block({ meeting, tint, lane, lanes, placement }: { meeting: Meeting; ti
   const cancelled = meeting.status === "cancelled";
   // Overlaps cascade: each later lane starts further right and sits on top, but is wider than an
   // equal split so names stay legible; the earlier meeting's header stays visible above it.
-  const left = (lane / lanes) * 100;
-  const width = lanes > 1 ? Math.min(100 - left, (100 / lanes) * 1.7) : 100;
+  const width = lanes > 1 ? Math.max(100 / lanes, Math.min((100 / lanes) * 1.7, 100 - (lanes - 1) * MIN_CASCADE_STEP)) : 100;
+  const left = lanes > 1 ? (lane * (100 - width)) / (lanes - 1) : 0;
   const style: CSSProperties & Record<`--${string}`, string> = {
     top: `${((top - DAY_START_MIN) / total) * 100}%`,
     height: `calc(${((bottom - top) / total) * 100}% - 2px)`,
@@ -411,7 +413,7 @@ export function ConsultationCalendar({
         day: cal.start,
         today: false,
         meetings: meetings.filter((meeting) => !meeting.designer_id),
-        emptyText: "",
+        emptyText: "No consultations",
         label: <span className="text-sm font-medium text-ink-muted">Unassigned</span>,
       });
   }
