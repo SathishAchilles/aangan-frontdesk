@@ -29,6 +29,8 @@ export function toolRoute(handler: Handler) {
     try {
       const deps: ToolDeps = { repo: createToolRepo(db), now: () => new Date(), settings: () => loadSettings() };
       const response = await handler(input, deps);
+      // Field names and expected types only, so a mismatch with Vaani's request shape shows in the logs.
+      if (response.status === 400) log.warn("tool input rejected", { tool: new URL(request.url).pathname, error: (response.body as { error?: unknown }).error });
       return NextResponse.json(response.body, { status: response.status });
     } catch (error) {
       log.error("tool failed", error);

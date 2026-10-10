@@ -22,7 +22,8 @@
     "telegram:setup": "tsx --env-file-if-exists=.env.local scripts/telegram-setup.ts",
     "staff:add": "tsx --env-file-if-exists=.env.local scripts/add-staff.ts",
     "crm:check": "tsx --env-file-if-exists=.env.local scripts/crm-live-check.ts",
-    "staged-call": "tsx --env-file-if-exists=.env.local scripts/staged-call.ts"
+    "staged-call": "tsx --env-file-if-exists=.env.local scripts/staged-call.ts",
+    "vaani:sync": "tsx --env-file-if-exists=.env.local scripts/vaani-sync.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

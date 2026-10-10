@@ -33,6 +33,8 @@ export function bookingRoute(handler: Handler) {
         settings: () => loadSettings(),
       };
       const response = await handler(input, deps);
+      // Field names and expected types only, so a mismatch with Vaani's request shape shows in the logs.
+      if (response.status === 400) log.warn("tool input rejected", { tool: new URL(request.url).pathname, error: (response.body as { error?: unknown }).error });
       return NextResponse.json(response.body, { status: response.status });
     } catch (error) {
       log.error("booking tool failed", error);
