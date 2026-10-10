@@ -25,11 +25,12 @@ export function NavLinks({ items }: { items: [string, string][] }) {
             <Link
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition md:flex-col md:gap-1 md:rounded-2xl md:px-1 md:py-2.5 md:text-[11px] ${
+              className={`group relative flex items-center gap-2 rounded-full px-3 py-2 text-sm transition duration-200 ease-out motion-safe:active:scale-95 md:flex-col md:gap-1 md:rounded-2xl md:px-1 md:py-2.5 md:text-[11px] ${
                 active ? "bg-rail-active font-medium text-rail-active-ink" : "text-rail-ink hover:bg-rail-hover hover:text-ink"
               }`}
             >
-              <svg aria-hidden="true" viewBox="0 0 20 20" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              {active && <span aria-hidden="true" className="rise absolute top-1/2 -left-2.5 hidden h-6 w-1 -translate-y-1/2 rounded-full bg-accent md:block" />}
+              <svg aria-hidden="true" viewBox="0 0 20 20" className="h-5 w-5 shrink-0 transition-transform duration-200 ease-out motion-safe:group-hover:-translate-y-0.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d={ICONS[href] ?? ICONS["/dashboard"]} />
               </svg>
               {label}

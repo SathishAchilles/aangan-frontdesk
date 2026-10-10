@@ -41,7 +41,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <RangePicker range={range} path="/dashboard" />
       </PageHeader>
 
-      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
         <Stat tone="accent" label="Calls answered" value={data.calls} hint="Every call is answered by the agent" href={`/dashboard/calls${q}`} />
         <Stat label="After hours" value={`${data.after_hours_calls} (${pct(data.after_hours_share)})`} hint="Outside office hours and days" meter={{ value: data.after_hours_share, max: 1 }} />
         <Stat label="Qualified enquiries" value={qualified} href={`/dashboard/calls${q}&outcome=QUALIFIED`} meter={{ value: qualified, max: data.enquiries }} />
@@ -52,7 +52,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <Stat label="Total running cost" value={inr(cost.total_inr)} hint={`${inr(cost.per_qualified_lead)} per qualified lead`} href={`/dashboard/costs${q}`} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="stagger grid gap-4 lg:grid-cols-2 lg:items-start">
         <Card title="Outcomes">
           <Table head={["Outcome", "Enquiries"]} rows={outcomeRows.map(([outcome, n]) => [OUTCOME_LABEL[outcome] ?? outcome, <MeterCell key="n" value={n} max={outcomeMax} />])} />
           {data.top_failing_criterion && (

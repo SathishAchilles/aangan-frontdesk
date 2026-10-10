@@ -37,14 +37,14 @@ export default async function Costs({ searchParams }: { searchParams: Promise<{ 
       <PageHeader title="Costs" eyebrow="What the front desk costs to run">
         <RangePicker range={range} path="/dashboard/costs" />
       </PageHeader>
-      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-5">
+      <div className="stagger grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-5">
         <Stat tone="accent" label="Total" value={inr(cost.total_inr)} hint={`${inr(cost.variable_inr)} usage + ${inr(cost.fixed_inr)} plans`} meter={{ value: cost.variable_inr, max: cost.total_inr }} />
         <Stat label="Per call" value={inr(cost.per_call)} hint={`${data.calls} calls`} />
         <Stat label="Per qualified lead" value={inr(cost.per_qualified_lead)} hint={`${qualified} qualified`} />
         <Stat label="Per booking" value={inr(cost.per_booking)} hint={`${data.booked} booked`} />
         <Stat label="Per won project" value={inr(cost.per_won)} hint={`${data.won} won`} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="stagger grid gap-4 lg:grid-cols-2">
         <Card title="Usage" action={cost.total_inr > 0 ? <Badge>{`${Math.round(usageShare * 100)}% of the total`}</Badge> : undefined}>
           <Table head={["Item", "Amount"]} rows={usage.map(([kind, amount]) => [KIND_LABEL[kind] ?? kind, <MeterCell key="a" value={amount} max={usageMax}>{inr(amount)}</MeterCell>])} empty="No usage recorded in this range." />
         </Card>
