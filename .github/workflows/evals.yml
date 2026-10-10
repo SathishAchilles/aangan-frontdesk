@@ -1,0 +1,62 @@
+name: Evals
+
+# One job that always reports, so it can be a required check; the steps it runs depend on the changed paths.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evals:
+    name: evals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changed
+        with:
+          filters: |
+            rules:
+              - 'src/lib/rules/**'
+              - 'evals/datasets/**'
+              - 'src/evals/**'
+            agent:
+              - 'prompts/**'
+              - 'src/app/api/vaani/tools/**'
+            note:
+              - 'src/lib/note.ts'
+              - 'prompts/note.md'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Harness check
+        run: npm run eval -- noop
+      # Real evals replace these stubs as their task groups land (gate-accuracy, tool-leakage, agent-sim, note-accuracy).
+      - name: Rules evals
+        if: steps.changed.outputs.rules == 'true'
+        run: npm run eval -- noop
+      - name: Agent evals
+        if: steps.changed.outputs.agent == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EVAL_BUDGET_INR: 300
+        run: npm run eval -- noop
+      - name: Note evals
+        if: steps.changed.outputs.note == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EVAL_BUDGET_INR: 300
+        run: npm run eval -- noop
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: evals/reports/
+          if-no-files-found: ignore

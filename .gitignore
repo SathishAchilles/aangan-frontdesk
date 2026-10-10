@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# eval run outputs (uploaded to the database and CI artifacts instead)
+/evals/reports/
+
+# local-only reference material (course agent config); not for a public repo
+/prompts/reference/
+/docs/reference/
