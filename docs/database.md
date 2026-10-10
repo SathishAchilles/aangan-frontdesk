@@ -39,6 +39,19 @@ The project is on Supabase's **free plan**, which pauses a project after a perio
 - Apply with `npm run db:migrate` (and `npm run db:migrate:test` for `aangan_test`). This runs `scripts/migrate.ts`, which applies each new file in a transaction and records its SHA-256 in `__migrations`; editing an applied file is refused.
 - `drizzle-kit migrate` is not used: it always runs `CREATE SCHEMA IF NOT EXISTS`, which needs database-level CREATE rights that `aangan_app` deliberately does not have. For the same reason the generated `CREATE SCHEMA` line is removed from `0000_init.sql`.
 
+## Scheduled follow-ups
+
+`pg_cron` (schema `pg_catalog`) and `pg_net` (schema `extensions`) are enabled on the project. Job `aangan-followups` runs every 2 minutes:
+
+```sql
+select net.http_post(
+  url := 'https://aangan-frontdesk.vercel.app/api/cron/followups',
+  headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'aangan_cron_secret'), 'Content-Type', 'application/json'),
+  body := '{}'::jsonb, timeout_milliseconds := 30000)
+```
+
+The bearer token lives in Supabase Vault (`aangan_cron_secret`), not in the job text. Check runs with `select * from cron.job_run_details where jobid = 1 order by start_time desc limit 5;` and responses with `select status_code, content from net._http_response order by created desc limit 5;`. First run verified 2026-10-10 21:00 UTC: HTTP 200.
+
 ## Admin tasks
 
 Creating the role, the schemas and extensions (`pg_cron`, `pg_net`) needs the project's `postgres` connection, which is not stored in this repo. These are one-time steps; everything else runs as `aangan_app`.

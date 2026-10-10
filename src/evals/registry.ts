@@ -8,6 +8,7 @@ import { idempotency } from "./runners/idempotency";
 import { noteAccuracy } from "./runners/note-accuracy";
 import { slotCompliance } from "./runners/slot-compliance";
 import { toolLatency, toolLeakage } from "./runners/tools";
+import { weekSimulation } from "./runners/week-simulation";
 
 export type EvalContext = {
   budget: Budget;
@@ -38,4 +39,5 @@ export const EVALS: Record<string, EvalRunner> = {
   "agent-sim": agentSim,
   "note-accuracy": noteAccuracy,
   idempotency,
+  "week-simulation": weekSimulation,
 };
