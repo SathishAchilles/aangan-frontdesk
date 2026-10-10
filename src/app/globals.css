@@ -27,6 +27,12 @@
   --accent-soft: #e3ecea;
   --accent-soft-ink: #2c4447;
   --chart-2: #a9bdbc;
+  /* Categorical fills for outcomes and cost kinds. Always shown beside a printed label and number. */
+  --chart-3: #d9a9a3;
+  --chart-4: #d8b26a;
+  --chart-5: #cdc7bb;
+  --chart-6: #e4dfd4;
+  --chart-7: #cfdcda;
   --ok: #2e6b3f;
   --ok-bg: #e6efe7;
   --warn: #7a5310;
@@ -64,6 +70,11 @@
     --accent-soft: #22302f;
     --accent-soft-ink: #c3dad9;
     --chart-2: #4e6a6b;
+    --chart-3: #a8706a;
+    --chart-4: #b38d47;
+    --chart-5: #66625a;
+    --chart-6: #43454c;
+    --chart-7: #3a5455;
     --ok: #a3cdac;
     --ok-bg: #1f2b23;
     --warn: #e2c68f;
@@ -100,6 +111,11 @@
   --color-accent-soft: var(--accent-soft);
   --color-accent-soft-ink: var(--accent-soft-ink);
   --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
   --color-ok: var(--ok);
   --color-ok-bg: var(--ok-bg);
   --color-warn: var(--warn);
@@ -222,12 +238,114 @@ body {
   transition-duration: 100ms;
 }
 
+/*
+ * Chart motion. Lines and areas are revealed left to right with a clip that only exists while the
+ * animation runs (fill-mode backwards), so the resting chart is never clipped. Donut segments draw
+ * their stroke in, tracker ticks pop up from the baseline, fills fade in. --d sets the delay.
+ */
+@keyframes reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes seg {
+  from {
+    stroke-dasharray: 0 400;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scaleY(0.25);
+  }
+}
+
+.draw {
+  animation: reveal 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: var(--d, 300ms);
+}
+.fade {
+  animation: fade 700ms ease-out both;
+  animation-delay: var(--d, 500ms);
+}
+.seg {
+  animation: seg 1000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d, 400ms);
+}
+.pop {
+  transform-origin: 50% 100%;
+  animation: pop 450ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d, 400ms);
+}
+
+/* A light travelling around a card's border (a "border beam"), for the panel that needs a person. */
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 200deg;
+}
+@keyframes beam {
+  from {
+    --beam-angle: 0deg;
+  }
+  to {
+    --beam-angle: 360deg;
+  }
+}
+.beam::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  background: conic-gradient(from var(--beam-angle), transparent 0deg 250deg, var(--chart-2) 320deg, var(--accent) 345deg, transparent 360deg);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: beam 6s linear infinite;
+}
+
+/* A soft sheen passing over a badge. The text colour never changes, so contrast holds throughout. */
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+.shimmer {
+  background-image: linear-gradient(110deg, transparent 35%, color-mix(in oklab, var(--surface) 55%, transparent) 50%, transparent 65%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 2.6s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stagger > *,
   .rise,
   .grow-x,
   .grow-y,
-  .live-ring {
+  .live-ring,
+  .draw,
+  .fade,
+  .seg,
+  .pop,
+  .beam::before,
+  .shimmer {
     animation: none;
   }
   .lift,
