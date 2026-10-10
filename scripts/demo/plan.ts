@@ -601,11 +601,12 @@ export function buildDemoPlan(input: DemoInputs): DemoPlan {
       const enquiry = newEnquiry({ caller_id: caller.id, intent: "existing", outcome: "NOT_ENQUIRY", flags: ["existing_client"], facts: { intent: "existing" }, created_at: start });
       const callback = promise(start, SENIOR_CALLBACK_WITHIN_MIN);
       const call = addCall({ caller, enquiryId: enquiry.id, start, seconds: between(80, 150), turns: existingClientTurns(callerFirst, issue, callback.words, isRepeat), summary: `Existing client ${callerFirst}${isRepeat ? " called again" : ""}: ${issue}. Passed to a senior for an urgent callback ${callback.words}.` });
-      // Today's complaint stays open for the attention panel: nothing in the job reads urgent tasks.
+      // Today's complaint stays open for the attention panel. The job escalates late urgent callbacks,
+      // so an open one is marked as already escalated to stay inert.
       const open = slot.daysAgo === 0 && openUrgentLeft > 0;
       if (open) openUrgentLeft -= 1;
       const { done } = settle(call.ended_at, callback.at, false);
-      addTask({ enquiryId: enquiry.id, kind: "urgent", reason: "Existing client needs a senior callback", payload: { phone: caller.phone_e164, summary: issue, call_id: call.id, notify: ["founder", "front_desk"] }, created: call.ended_at, due: callback.at, done: open ? null : done });
+      addTask({ enquiryId: enquiry.id, kind: "urgent", reason: "Existing client needs a senior callback", payload: { phone: caller.phone_e164, summary: issue, call_id: call.id, notify: ["founder", "front_desk"] }, created: call.ended_at, due: callback.at, done: open ? null : done, escalated: open ? call.ended_at : null });
       firstCallers.push({ caller, first: callerFirst, last, kind });
       return;
     }

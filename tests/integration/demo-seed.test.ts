@@ -152,7 +152,7 @@ function expectCoverage(plan: DemoPlan, now: Date, designers: Staff[]) {
   for (const task of late) expect(task.escalated_at !== null && task.escalated_at <= task.done_at!).toBe(true);
   for (const task of callbacks) expect(task.due_at).not.toBeNull();
 
-  // Inert by construction: every task is already "posted", every open callback is escalated, and
+  // Inert by construction: every task is already "posted", every open callback or complaint is escalated, and
   // every booking awaiting a result sits at the nudge cap (bookings age into the nudge query).
   for (const task of plan.tasks) expect(task.chat_id).not.toBeNull();
   for (const task of plan.tasks.filter((t) => t.done_at === null)) {
