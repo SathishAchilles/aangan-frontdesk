@@ -3,6 +3,7 @@ import type { EvalReport } from "./types";
 import { buildReport } from "./report";
 import { dataIntegrity } from "./runners/data-integrity";
 import { gateAccuracy } from "./runners/gate-accuracy";
+import { toolLatency, toolLeakage } from "./runners/tools";
 
 export type EvalContext = {
   budget: Budget;
@@ -27,4 +28,6 @@ export const EVALS: Record<string, EvalRunner> = {
   noop,
   "data-integrity": dataIntegrity,
   "gate-accuracy": gateAccuracy,
+  "tool-latency": toolLatency,
+  "tool-leakage": toolLeakage,
 };
