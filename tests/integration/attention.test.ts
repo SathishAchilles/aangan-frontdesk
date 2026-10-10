@@ -134,6 +134,9 @@ describe("needs attention", () => {
       const o = await lead("Today Omkar", YESTERDAY, "QUALIFIED");
       ids.consultToday = await booking(o.enquiryId, min(120));
       calls.consultToday = o.callId;
+      // Earlier today and already over: nothing to act on, so it stays off the panel.
+      const earlier = await lead("Earlier Esha", YESTERDAY, "QUALIFIED");
+      await booking(earlier.enquiryId, min(-180), "booked", YESTERDAY);
       const p = await lead("Tomorrow Priya", YESTERDAY, "QUALIFIED");
       ids.consultTomorrow = await booking(p.enquiryId, new Date("2026-10-15T11:00:00+05:30"));
       const q = await lead("Cancelled Qadir", YESTERDAY, "QUALIFIED");

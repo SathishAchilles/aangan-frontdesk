@@ -172,7 +172,9 @@ export async function attention(sql: postgres.Sql, schema: string, now: Date, se
     left join ${s("callers")} ca on ca.id = e.caller_id
     left join ${s("staff")} st on st.id = b.designer_id
     left join lateral (select c.id from ${s("calls")} c where c.enquiry_id = e.id order by c.created_at desc limit 1) lc on true
-    where b.status <> 'cancelled' and b.start_at >= ${today} and b.start_at < ${new Date(today.getTime() + 2 * DAY_MS)}`;
+    where b.status <> 'cancelled' and b.start_at >= ${today} and b.start_at < ${new Date(today.getTime() + 2 * DAY_MS)}
+      -- Consultations that have already ended are not something to act on.
+      and coalesce(b.end_at, b.start_at + interval '60 minutes') > ${now}`;
   for (const row of consults) {
     const isToday = row.start_at < tomorrow;
     items.push({
