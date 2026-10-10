@@ -19,7 +19,8 @@
     "db:migrate:test": "tsx --env-file-if-exists=.env.local scripts/migrate.ts aangan_test",
     "test:coverage": "vitest run --dir src --coverage --coverage.include='src/lib/rules/**' --coverage.exclude='**/*.test.ts' --coverage.thresholds.lines=90",
     "setting:set": "tsx --env-file-if-exists=.env.local scripts/set-setting.ts",
-    "telegram:setup": "tsx --env-file-if-exists=.env.local scripts/telegram-setup.ts"
+    "telegram:setup": "tsx --env-file-if-exists=.env.local scripts/telegram-setup.ts",
+    "staff:add": "tsx --env-file-if-exists=.env.local scripts/add-staff.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

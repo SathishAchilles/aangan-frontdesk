@@ -68,6 +68,8 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
   { key: "cost_ai_usd_per_m", type: "json", default: { input: 0.75, output: 3.75 }, source: "Gemini 3.8 Flash promotional price to 2026-12-31 (doubles from 2027-01-01); ai.google.dev/gemini-api/docs/pricing." },
   { key: "inr_per_usd", type: "number", default: 88, min: 50, max: 150, source: "Conversion rate for AI token costs." },
 
+  { key: "avg_project_value_inr", type: "number", default: 1100000, min: 100000, max: 50000000, source: "Case brief: average project value Rs 8-14 lakh (midpoint), used only for pipeline value on the dashboard." },
+
   // Privacy
   { key: "retention_recording_days", type: "int", default: 90, min: 7, max: 730, source: "Privacy: recordings links kept 90 days." },
   { key: "retention_transcript_days", type: "int", default: 365, min: 30, max: 1095, source: "Privacy: transcripts kept 12 months." },
