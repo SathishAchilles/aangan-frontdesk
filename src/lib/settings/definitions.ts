@@ -58,8 +58,8 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
   {
     key: "hubspot_stages",
     type: "json",
-    default: { new: "New Qualified Enquiry", booked: "Meeting Booked", won: "Won", lost: "Lost" },
-    source: "HubSpot deal pipeline stage labels.",
+    default: { new: "Qualified To Buy", booked: "Appointment Scheduled", won: "Closed Won", lost: "Closed Lost" },
+    source: "Stage labels in HubSpot's default deal pipeline, so no stage renaming is needed.",
   },
 
   // Costs (copied onto each cost line when recorded)
