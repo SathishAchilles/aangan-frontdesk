@@ -1,4 +1,5 @@
 import "server-only";
+import { log } from "../log";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { createCalcomClient } from "../calendar";
@@ -34,7 +35,7 @@ export function bookingRoute(handler: Handler) {
       const response = await handler(input, deps);
       return NextResponse.json(response.body, { status: response.status });
     } catch (error) {
-      console.error("booking tool failed", error instanceof Error ? error.message : "unknown error");
+      log.error("booking tool failed", error);
       return NextResponse.json({ ok: false, error: "internal", say_line: FAILURE_LINE }, { status: 500 });
     }
   };

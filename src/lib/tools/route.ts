@@ -1,4 +1,5 @@
 import "server-only";
+import { log } from "../log";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { secretMatches } from "../http/auth";
@@ -30,7 +31,7 @@ export function toolRoute(handler: Handler) {
       const response = await handler(input, deps);
       return NextResponse.json(response.body, { status: response.status });
     } catch (error) {
-      console.error("tool failed", error instanceof Error ? error.message : "unknown error");
+      log.error("tool failed", error);
       return NextResponse.json({ ok: false, error: "internal", say_line: FAILURE_LINE }, { status: 500 });
     }
   };

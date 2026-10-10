@@ -1,7 +1,7 @@
 import { and, isNull, lt, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db } from "@/db/client";
-import { calls, inbox, tasks } from "@/db/schema";
+import { db, rawSql } from "@/db/client";
+import { inbox, SCHEMA_NAME, tasks } from "@/db/schema";
 import { createBookingEventRepo } from "@/lib/booking/calcom-event-repo";
 import { calcomEventSchema, processCalcomEvent } from "@/lib/booking/calcom-webhook";
 import { createHubspotClient, syncEnquiryToCrm } from "@/lib/crm";
@@ -13,6 +13,7 @@ import { createInboxStore } from "@/lib/inbox/store";
 import { createGeminiNoteWriter } from "@/lib/note";
 import { createPipelineRepo } from "@/lib/pipeline/repo";
 import { processVaaniEvent, vaaniEventSchema } from "@/lib/pipeline/vaani-events";
+import { applyRetention } from "@/lib/retention";
 import { loadSettings } from "@/lib/settings/store";
 import { handleCallbackQuery } from "@/lib/telegram/actions";
 import { createTelegramClient } from "@/lib/telegram/client";
@@ -105,21 +106,9 @@ export async function POST(request: Request) {
   }
 
   // 5. Retention: drop recording links and transcripts after the configured number of days.
-  await step("retention", async () => {
-    const recordingDays = Number(values.retention_recording_days ?? 90);
-    const transcriptDays = Number(values.retention_transcript_days ?? 365);
-    const recordings = await db
-      .update(calls)
-      .set({ recordingUrl: null })
-      .where(and(sql`${calls.recordingUrl} is not null`, lt(calls.createdAt, sql`now() - make_interval(days => ${recordingDays})`)))
-      .returning({ id: calls.id });
-    const transcripts = await db
-      .update(calls)
-      .set({ transcript: null, summary: null })
-      .where(and(sql`${calls.transcript} is not null`, lt(calls.createdAt, sql`now() - make_interval(days => ${transcriptDays})`)))
-      .returning({ id: calls.id });
-    return { recordings_cleared: recordings.length, transcripts_cleared: transcripts.length };
-  });
+  await step("retention", () =>
+    applyRetention(rawSql(), SCHEMA_NAME, { recordings: Number(values.retention_recording_days ?? 90), transcripts: Number(values.retention_transcript_days ?? 365) }),
+  );
 
   return NextResponse.json({ ok: errors.length === 0, at: now.toISOString(), ...result, errors }, { status: errors.length === 0 ? 200 : 500 });
 }

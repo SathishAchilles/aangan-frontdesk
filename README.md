@@ -2,7 +2,7 @@
 
 An AI front desk for **Aangan Studio**, a 60-person interior design studio in Pune. It answers every inbound phone call, day or night, checks the caller against the founder's own five rules, books a consultation on the call, hands qualified leads to a designer with everything already asked, and shows the founder what the system costs and what it generates.
 
-> **Status:** project outline. Nothing below is built yet; this README is the plan the build follows.
+> **Status:** built and deployed; not yet taking real calls. The voice agent, tools, gate, booking, handoff pipeline, follow-ups, dashboard and settings are live. Connecting a phone number and a pilot week come next (see [Still open](#still-open)).
 >
 > **Live:** https://aangan-frontdesk.vercel.app
 
@@ -110,18 +110,71 @@ Every change is range-checked, needs a reason, and is kept in an audit log.
 - **Generated:** calls, after-hours share, time to answer, outcomes by gate result, most common failing criterion, booked to consulted to won, pipeline value, per-designer acceptance time.
 - **Cost:** per-call (telephony minutes, Vaani minutes, Gemini tokens) and fixed monthly plans; cost per call, per qualified lead, per booking, per won project.
 
-## Roadmap
+## Architecture
 
-1. Outline and deploy (this commit)
-2. Database schema and settings in Supabase
-3. Mid-call tools and the gate, with the 20 phone transcripts as fixed test cases
-4. Vaani agent prompt and tool wiring
-5. Post-call pipeline: webhook, Gemini note, Telegram, HubSpot
-6. Follow-ups with `pg_cron`
-7. Founder dashboard and admin settings
-8. Switch telephony to Vobiz
+![Components map](docs/diagrams/components-map.png)
 
-## Open items
+| Path | What |
+|---|---|
+| `src/lib/rules/` | The gate: parsers, office hours, wording, `evaluateEnquiry` (plain code, no model) |
+| `src/lib/tools/`, `src/app/api/vaani/tools/` | Mid-call tools: `lookup_caller`, `evaluate_enquiry`, `log_intent` |
+| `src/lib/booking/` | `get_slots`, `book_slot`, Cal.com webhook |
+| `src/lib/pipeline/` | Vaani webhook events: link the call, safety flags, Gemini note, route by outcome |
+| `src/lib/telegram/` | Staff messages and the Accept button |
+| `src/lib/followups/`, `src/app/api/cron/followups/` | Reminders, escalations, callbacks, CRM sync, retention (every 2 min via `pg_cron`) |
+| `src/lib/dashboard/`, `src/app/dashboard/` | Founder dashboard and admin settings |
+| `src/evals/` | Eval runners, graders and the agent simulator |
+| `prompts/` | Agent prompt and the note-writer prompt |
+| `docs/` | Qualification rules, database, latency, privacy, agent prompt checklist |
 
-- Vobiz to Vaani SIP connection to be confirmed before the switch.
-- Founder to confirm the default values above.
+## Setup
+
+Needs Node 22+, the Vercel CLI and access to the Supabase project.
+
+```bash
+git clone https://github.com/SathishAchilles/aangan-frontdesk && cd aangan-frontdesk
+npm install
+cp .env.example .env.local      # fill in every value; see the comments in the file
+npm run db:migrate              # aangan schema
+npm run db:migrate:test         # aangan_test schema, rebuilt from scratch
+npm run seed                    # settings, localities, festivals, placeholder staff (keeps admin edits)
+npm run staff:add -- you@example.com "Your Name" admin
+npm run dev
+```
+
+Production environment variables live in Vercel (`vercel env`). After changing one, redeploy with `vercel deploy --prod`.
+
+## Commands
+
+| Command | What |
+|---|---|
+| `npm run lint`, `npm run typecheck` | ESLint, and `next typegen` + `tsc` |
+| `npm test` | Unit tests (no network) |
+| `npm run test:contract` | Tool and webhook contracts against recorded fixtures |
+| `npm run test:integration` | Against the `aangan_test` schema |
+| `npm run eval -- <name>` | One eval; the report goes to `evals/reports/` and `aangan.eval_runs` |
+| `npm run setting:set -- <key> '<value>' "<reason>"` | Change a setting with audit and version |
+| `npm run staff:add -- <email> "<name>" <admin\|viewer>` | Create or link a dashboard login |
+| `npm run telegram:setup` | Register the Telegram webhook and commands |
+
+## Tests and evals
+
+Evals: `gate-accuracy`, `tool-latency`, `tool-leakage`, `slot-compliance`, `agent-sim`, `note-accuracy`, `idempotency`, `week-simulation`, `data-integrity`, `metric-reconcile`, `replay-correctness`, `pii-scan`. CI runs lint, typecheck, unit and contract tests on every push, and the evals that the changed files affect. Results show on the dashboard's Quality page.
+
+Hard zeros, never allowed: a price figure spoken by the agent, a budget question asked, a lead marked qualified that fails a rule, a full phone number or secret in the logs.
+
+## Rollback
+
+- **Calls:** turn off call forwarding on the studio number; calls ring the front desk as before. Nothing else needs to change.
+- **Code:** `vercel rollback` (or promote the previous deployment in the Vercel dashboard).
+- **Settings:** each change has a version; set the old value back from the setting's history page.
+
+## Still open
+
+- Connect a phone number to the Vaani agent (Vaani-provisioned now, Vobiz later) and run a live test call.
+- Learn the exact Vaani tool format from one tool added by hand, then sync all tools from code.
+- Create the Telegram bot and set `TELEGRAM_BOT_TOKEN`; copy the HubSpot app token into `HUBSPOT_PRIVATE_APP_TOKEN`.
+- Real designer names and Telegram ids; Cal.com availability for evenings and weekends.
+- Founder review of the default settings and the provisional gold labels.
+- A one-week after-hours pilot before forwarding all calls.
+- A log drain if the full 7-day PII scan is wanted (Vercel keeps about an hour of logs on the current plan).
