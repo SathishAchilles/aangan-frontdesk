@@ -18,7 +18,9 @@ export const evaluateEnquiryRequest = z.preprocess(
     if (!input || typeof input !== "object" || Array.isArray(input)) return input;
     const { enquiry_id, phone, intent, asked, facts, ...rest } = input as Record<string, unknown>;
     const nested = facts && typeof facts === "object" && !Array.isArray(facts) ? facts : {};
-    return { enquiry_id, phone, intent, asked, facts: { ...rest, ...nested } };
+    // The model sometimes fills enquiry_id with a placeholder; anything that is not a UUID is ignored.
+    const id = typeof enquiry_id === "string" && z.uuid().safeParse(enquiry_id).success ? enquiry_id : undefined;
+    return { enquiry_id: id, phone, intent, asked, facts: { ...rest, ...nested } };
   },
   z.object({
     enquiry_id: z.uuid().optional(),

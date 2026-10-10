@@ -1,5 +1,6 @@
 import "server-only";
 import { log } from "../log";
+import { dropBlankArgs } from "../tools/args";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { createCalcomClient } from "../calendar";
@@ -32,9 +33,10 @@ export function bookingRoute(handler: Handler) {
         now: () => new Date(),
         settings: () => loadSettings(),
       };
-      // Argument names only (never values): shows what Vaani's model actually sent.
-      log.info("tool called", { tool: new URL(request.url).pathname, args: input && typeof input === "object" ? Object.keys(input) : typeof input });
-      const response = await handler(input, deps);
+      const args = dropBlankArgs(input);
+      // Argument names only (never values): shows what Vaani's model actually filled in.
+      log.info("tool called", { tool: new URL(request.url).pathname, args: args && typeof args === "object" ? Object.keys(args) : typeof args });
+      const response = await handler(args, deps);
       // Field names and expected types only, so a mismatch with Vaani's request shape shows in the logs.
       if (response.status === 400) log.warn("tool input rejected", { tool: new URL(request.url).pathname, error: (response.body as { error?: unknown }).error });
       // Vaani does not pass the body of a non-2xx reply to the model, which then makes up a line.

@@ -22,6 +22,20 @@ type VaaniFunction = {
   agent_config: { is_enabled: boolean; params: Record<string, unknown> };
 };
 
+// Python type names, as Vaani writes them when it parses a cURL ("phone (str): ...").
+const PY_TYPE: Record<string, string> = { string: "str", number: "float", integer: "int", boolean: "bool", object: "dict" };
+
+// Vaani builds the signature the model sees from an "Args:" docstring at the end of the description
+// (the dashboard writes it this way); function_params alone leaves the model calling tools with {}.
+export function describeWithArgs(description: string, properties: Record<string, { type: string; description: string; enum?: string[]; items?: { type: string } }>): string {
+  const lines = Object.entries(properties).map(([name, spec]) => {
+    const type = spec.type === "array" ? `list[${PY_TYPE[spec.items?.type ?? "string"] ?? "str"}]` : (PY_TYPE[spec.type] ?? "str");
+    const options = spec.enum ? ` One of: ${spec.enum.join(", ")}.` : "";
+    return `    ${name} (${type}): ${spec.description}${options}`;
+  });
+  return lines.length ? `${description}\n\nArgs:\n${lines.join("\n")}` : description;
+}
+
 export function promptVersion(prompt: string): string {
   return createHash("sha256").update(prompt).digest("hex").slice(0, 12);
 }
@@ -34,7 +48,7 @@ export function buildFunctions(input: SyncInput, existing: { function_name?: str
     return {
       ...(id ? { id } : {}),
       function_name: spec.name,
-      description: spec.description,
+      description: describeWithArgs(spec.description, spec.parameters.properties),
       function_params: { type: "object", properties: spec.parameters.properties, required: spec.parameters.required ?? [] },
       is_custom: true,
       agent_config: {
