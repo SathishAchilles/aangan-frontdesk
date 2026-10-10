@@ -5,7 +5,7 @@
 import type postgres from "postgres";
 import type { DayKey } from "../../src/lib/rules/time";
 import { DEMO_EVAL_COMMIT, DEMO_FIXED_COST_PREFIX, DEMO_ID_PREFIX, DEMO_PHONE_BLOCK } from "./constants";
-import { buildDemoPlan, type DemoPlan } from "./plan";
+import { buildDemoPlan, type DemoInputs, type DemoPlan } from "./plan";
 
 export const DEMO_TABLES = ["callers", "enquiries", "calls", "bookings", "handoffs", "tasks", "cost_lines", "fixed_costs", "eval_runs"] as const;
 export type DemoCounts = Record<(typeof DEMO_TABLES)[number], number>;
@@ -83,7 +83,7 @@ export async function removeDemo(sql: postgres.Sql, schema: string): Promise<Dem
   }) as Promise<DemoCounts>;
 }
 
-async function loadInputs(sql: Sql, schema: string, now: Date) {
+export async function loadInputs(sql: Sql, schema: string, now: Date): Promise<DemoInputs> {
   const t = tables(sql, schema);
   const rows = await sql<{ key: string; value: unknown }[]>`select key, value from ${t("settings")}`;
   const values = Object.fromEntries(rows.map((row) => [row.key, row.value])) as Record<string, unknown>;
@@ -111,6 +111,8 @@ async function loadInputs(sql: Sql, schema: string, now: Date) {
     transcriptDays: Number(need("retention_transcript_days")),
     acceptReminderMin: Number(need("accept_reminder_min")),
     acceptEscalateMin: Number(need("accept_escalate_min")),
+    callbackWithinMin: Number(need("callback_within_min")),
+    afterHoursCallbackTime: String(need("after_hours_callback_time")),
   };
 }
 

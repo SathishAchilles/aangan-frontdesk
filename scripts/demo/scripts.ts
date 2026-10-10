@@ -83,6 +83,22 @@ export function slipTurns(p: Persona, slip: "price" | "budget"): Turn[] {
   return [...turns.slice(0, at), ...extra, ...turns.slice(at)];
 }
 
+// A qualified caller for whom no offered slot works: the agent hands over to a person to fix a time
+// (the booking tool's handToPerson path), so the enquiry ends as NEEDS_HUMAN with a callback.
+export function noSlotTurns(p: Persona, when: string): Turn[] {
+  const turns = qualifiedTurns({ ...p, booked: true, askedPrice: false }, "none");
+  const offer = turns.findIndex(([speaker, text]) => speaker === "AGENT" && text.startsWith("Thank you, that's everything I need."));
+  return [
+    ...turns.slice(0, offer + 1),
+    ["USER", "Yes, please."],
+    ["AGENT", "The earliest I can offer is Thursday at 11 in the morning, or Friday at 4 in the afternoon. Would either of those suit you?"],
+    ["USER", "I'm travelling all of next week, so neither works. Is there anything later?"],
+    ["AGENT", `I'm not able to find a time that suits just now. Someone from our team will call you back ${when} to fix a time.`],
+    ["USER", "That's fine, thank you."],
+    ["AGENT", "Thank you for calling Aangan Studio. Have a lovely day."],
+  ];
+}
+
 export type NotQualifiedReason = "C1" | "C2" | "C3" | "C4" | "segment" | "structural" | "too_large";
 
 export function notQualifiedTurns(first: string, reason: NotQualifiedReason, detail: { locality: string; home: string }): Turn[] {

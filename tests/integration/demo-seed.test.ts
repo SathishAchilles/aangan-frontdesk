@@ -3,12 +3,16 @@
 // replaced by recording fakes, and expects no sends, no CRM calls, no new tasks and no changed rows.
 import { and, isNull, lt, sql as dsql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { demoCounts, removeDemo, seedDemo } from "../../scripts/demo/db";
+import { demoCounts, loadInputs, removeDemo, seedDemo } from "../../scripts/demo/db";
 import { DEMO_PHONE_BLOCK, NUDGE_CAP } from "../../scripts/demo/constants";
+import { buildDemoPlan, type DemoPlan, demoWeeks } from "../../scripts/demo/plan";
 import { db, rawSql } from "../../src/db/client";
 import { inbox } from "../../src/db/schema";
+import { containsPriceFigure } from "../../src/evals/graders/deterministic";
 import { type HubspotClient, syncEnquiryToCrm } from "../../src/lib/crm";
 import { createCrmLinkRepo, enquiriesToSync } from "../../src/lib/crm-repo";
+import { attention } from "../../src/lib/dashboard/attention";
+import { noteSchema } from "../../src/lib/note";
 import { createFollowupRepo } from "../../src/lib/followups/repo";
 import { outcomeNudgeDue } from "../../src/lib/followups/rules";
 import { runFollowups } from "../../src/lib/followups/run";
@@ -79,6 +83,90 @@ function recordingHubspot() {
   return { calls, client };
 }
 
+// Midnight IST `daysAgo` days before `now`.
+const istDayStart = (now: Date, daysAgo: number) => new Date(`${new Date(now.getTime() + 330 * 60_000 - daysAgo * DAY).toISOString().slice(0, 10)}T00:00:00+05:30`);
+
+type Staff = { id: string; consult_types: string[] };
+
+// What the overview, designer and attention pages need from a plan, for any "now".
+function expectCoverage(plan: DemoPlan, now: Date, designers: Staff[]) {
+  // The last 14 days are clearly busier than the 14 before, with or without today.
+  const inbound = (from: Date, to: Date) => plan.calls.filter((c) => c.direction === "in" && c.started_at >= from && c.started_at < to).length;
+  const start = (daysAgo: number) => istDayStart(now, daysAgo);
+  expect(inbound(start(13), now)).toBeGreaterThanOrEqual(1.3 * inbound(start(27), start(13)));
+  expect(inbound(start(14), start(0))).toBeGreaterThanOrEqual(1.3 * inbound(start(28), start(14)));
+
+  // Today's calls cover every outcome (from half an hour after midnight, when there is room for them).
+  if (now.getTime() - start(0).getTime() >= 30 * 60_000) {
+    const todays = plan.calls.filter((c) => c.started_at >= start(0));
+    const outcomeOf = new Map(plan.enquiries.map((e) => [e.id, e.outcome]));
+    expect(new Set(todays.map((c) => outcomeOf.get(c.enquiry_id ?? "")))).toEqual(new Set(["PENDING", "QUALIFIED", "QUALIFIED_WITH_NOTES", "NOT_QUALIFIED", "NEEDS_HUMAN", "NOT_ENQUIRY"]));
+  }
+
+  // Every designer: a calendar this week and next, with a cancellation, a reschedule and a
+  // double-booking; fast and slow acceptances; won and lost results; callbacks on their leads.
+  const { thisWeek, nextWeek, end } = demoWeeks(now);
+  const callbacks = plan.tasks.filter((t) => t.kind === "callback");
+  for (const designer of designers) {
+    const mine = plan.bookings.filter((b) => b.designer_id === designer.id);
+    const window = mine.filter((b) => b.start_at >= thisWeek && b.start_at < end);
+    expect(mine.filter((b) => b.start_at >= thisWeek && b.start_at < nextWeek).length).toBeGreaterThanOrEqual(2);
+    expect(mine.filter((b) => b.start_at >= nextWeek && b.start_at < end).length).toBeGreaterThanOrEqual(2);
+    expect(window.some((b) => b.status === "cancelled")).toBe(true);
+    expect(window.some((b) => b.status === "rescheduled")).toBe(true);
+    const live = window.filter((b) => b.status !== "cancelled");
+    expect(live.some((a) => live.some((b) => a.id !== b.id && a.start_at < b.end_at && b.start_at < a.end_at))).toBe(true);
+    for (const booking of mine) if (designer.consult_types.length > 0) expect(designer.consult_types).toContain(booking.consult_type);
+    const accepted = plan.handoffs.filter((h) => h.accepted_by === designer.id);
+    expect(accepted.some((h) => h.reminded_at === null)).toBe(true);
+    expect(accepted.some((h) => h.reminded_at !== null)).toBe(true);
+    const leads = new Set(plan.enquiries.filter((e) => e.assigned_designer_id === designer.id).map((e) => e.id));
+    expect(plan.enquiries.some((e) => leads.has(e.id) && e.consult_result === "won")).toBe(true);
+    expect(plan.enquiries.some((e) => leads.has(e.id) && e.consult_result === "lost")).toBe(true);
+    expect(callbacks.some((t) => leads.has(t.enquiry_id))).toBe(true);
+  }
+
+  // One designer per lead: assigned, holding the booking and accepting the handoff.
+  const assigned = new Map(plan.enquiries.map((e) => [e.id, e.assigned_designer_id]));
+  for (const booking of plan.bookings) expect(booking.designer_id).toBe(assigned.get(booking.enquiry_id));
+  for (const handoff of plan.handoffs) if (handoff.accepted_by) expect(handoff.accepted_by).toBe(assigned.get(handoff.enquiry_id));
+
+  // Every handoff carries a complete note in the note writer's shape, with no price in it.
+  for (const handoff of plan.handoffs) {
+    const note = handoff.note as Record<string, unknown> & { criteria: Record<string, string>; watch_outs: string[] };
+    expect(Object.keys(note).sort()).toEqual([...Object.keys(noteSchema.properties), "outcome"].sort());
+    expect(Object.keys(note.criteria).sort()).toEqual(["C1", "C2", "C3", "C4", "C5"]);
+    expect(note.watch_outs.length).toBeGreaterThan(0);
+    expect(typeof note.one_line_summary).toBe("string");
+    const text = Object.values(note).flatMap((value) => (typeof value === "string" ? [value] : Array.isArray(value) ? value.map(String) : []));
+    for (const value of text) expect(containsPriceFigure(value), value).toBe(false);
+  }
+
+  // Callbacks: some on time, some late (escalated by the job when they fell due), so the on-time
+  // rate is realistic.
+  const late = callbacks.filter((t) => t.done_at && t.due_at && t.done_at > t.due_at);
+  const onTime = callbacks.filter((t) => t.done_at && (!t.due_at || t.done_at <= t.due_at));
+  expect(late.length).toBeGreaterThan(0);
+  expect(onTime.length / (onTime.length + late.length)).toBeGreaterThan(0.45);
+  expect(onTime.length / (onTime.length + late.length)).toBeLessThan(0.95);
+  for (const task of late) expect(task.escalated_at !== null && task.escalated_at <= task.done_at!).toBe(true);
+  for (const task of callbacks) expect(task.due_at).not.toBeNull();
+
+  // Inert by construction: every task is already "posted", every open callback is escalated, and
+  // every booking awaiting a result sits at the nudge cap (bookings age into the nudge query).
+  for (const task of plan.tasks) expect(task.chat_id).not.toBeNull();
+  for (const task of plan.tasks.filter((t) => t.done_at === null)) {
+    expect(["callback", "urgent", "alert"]).toContain(task.kind);
+    if (task.kind === "callback") expect(task.escalated_at).not.toBeNull();
+  }
+  for (const enquiry of plan.enquiries) {
+    if (enquiry.consult_result || !plan.bookings.some((b) => b.enquiry_id === enquiry.id && b.status !== "cancelled")) continue;
+    expect(enquiry.outcome_nudges).toBe(NUDGE_CAP);
+    expect(enquiry.last_nudge_at).not.toBeNull();
+  }
+  for (const enquiry of plan.enquiries) expect(enquiry.flags).not.toContain("sync_pending");
+}
+
 let before: Record<string, string>;
 
 beforeAll(async () => {
@@ -117,9 +205,22 @@ describe("demo seed", () => {
     const failing = new Set(plan.enquiries.flatMap((e) => e.criteria.filter((c) => c.state === "fail").map((c) => c.id)));
     expect([...failing].sort()).toEqual(["C1", "C2", "C3", "C4"]);
     expect(plan.calls.filter((c) => c.grader_flags.price_figure.length + c.grader_flags.budget_question.length > 0)).toHaveLength(2);
+    const now = new Date();
+    const designers = await sql<Staff[]>`select id, consult_types from ${t("staff")} where role = 'designer' and active`;
+    expect(designers.length).toBeGreaterThan(0);
+    expectCoverage(plan, now, designers);
 
     const seeded = await snapshot("all");
     const { rules, values } = await loadSettings();
+
+    // The needs-attention panel shows every group that can be inert, and none that the job acts on.
+    const items = await attention(sql, TEST_SCHEMA, now, { acceptEscalateMin: Number(values.accept_escalate_min), office: rules.office });
+    const shown = new Set(items.map((item) => item.kind));
+    for (const kind of ["handoff_escalated", "callback_overdue", "complaint", "safety_flag"]) expect(shown).toContain(kind);
+    for (const kind of ["handoff_waiting", "handoff_overdue", "callback_due"]) expect(shown).not.toContain(kind);
+    const officeDay = (date: Date) => rules.office.days.includes(["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(date.getTime() + 330 * 60_000).getUTCDay()] as never);
+    if (officeDay(now)) expect(shown).toContain("consult_today");
+    if (officeDay(new Date(now.getTime() + DAY))) expect(shown).toContain("consult_tomorrow");
     const repo = createFollowupRepo(db);
 
     // 1. Inbox retry: the route's own selection.
@@ -179,6 +280,21 @@ describe("demo seed", () => {
     expect(removed).toEqual(first);
     expect(inserted).toEqual(first);
     expect(await snapshot("non-demo")).toEqual(before);
+  });
+
+  it("covers the overview, designer and attention pages on any day and at any hour", async () => {
+    const inputs = await loadInputs(sql, TEST_SCHEMA, new Date());
+    const designers = await sql<Staff[]>`select id, consult_types from ${t("staff")} where role = 'designer' and active`;
+    for (let offset = 1; offset <= 7; offset += 1) {
+      const day = istDayStart(new Date(inputs.now.getTime() + offset * DAY), 0).getTime();
+      for (const minutes of [10, 45, 360, 555, 610, 780, 1145, 1435]) {
+        const now = new Date(day + minutes * 60_000);
+        const plan = buildDemoPlan({ ...inputs, now });
+        expectCoverage(plan, now, designers);
+        // The attention panel's open callback, complaint and safety alert exist at every hour.
+        expect(new Set(plan.tasks.filter((task) => task.done_at === null).map((task) => task.kind))).toEqual(new Set(["callback", "urgent", "alert"]));
+      }
+    }
   });
 
   it("removes every demo row and nothing else", async () => {

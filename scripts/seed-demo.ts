@@ -1,10 +1,11 @@
-// Seeds about six weeks of demo calls, enquiries, bookings, handoffs, tasks and costs so the dashboard
-// has every scenario to show, or removes them again. Reruns replace the previous demo set. Demo rows
+// Seeds about six weeks of demo calls, enquiries, bookings, handoffs, tasks and costs so the dashboards
+// have every scenario to show, or removes them again. Reruns replace the previous demo set. Demo rows
 // are shaped so the follow-ups job never acts on them (scripts/demo/constants.ts explains how).
 // Usage: npm run seed:demo           (DB_SCHEMA=aangan_test npm run seed:demo for the test schema)
 //        npm run seed:demo:remove
 import postgres from "postgres";
 import { DEMO_TABLES, type DemoCounts, removeDemo, seedDemo } from "./demo/db";
+import { demoWeeks } from "./demo/plan";
 
 const schema = process.env.DB_SCHEMA === "aangan_test" ? "aangan_test" : "aangan";
 const url = process.env.DATABASE_MIGRATION_URL;
@@ -53,6 +54,23 @@ async function main() {
   console.log(`bookings by type/status/time: ${tally(plan.bookings.map((b) => `${b.consult_type}/${b.status}/${b.start_at > now ? "future" : "past"}`))}`);
   const names = new Map<string, string>();
   for (const row of await sql<{ id: string; name: string }[]>`select id, name from ${sql(`${schema}.staff`)}`) names.set(row.id, row.name);
+  const dayStart = (daysAgo: number) => new Date(`${istDay(new Date(now.getTime() - daysAgo * 86_400_000))}T00:00:00+05:30`);
+  const between = (from: Date, to: Date) => count(inbound, (c) => c.started_at >= from && c.started_at < to);
+  console.log(`inbound calls: last 14 days incl. today=${between(dayStart(13), now)} prior 14=${between(dayStart(27), dayStart(13))}; 14 days to yesterday=${between(dayStart(14), dayStart(0))} prior 14=${between(dayStart(28), dayStart(14))}`);
+  const callbacks = plan.tasks.filter((t) => t.kind === "callback");
+  console.log(`callbacks: total=${callbacks.length} on_time=${count(callbacks, (t) => t.done_at !== null && (t.due_at === null || t.done_at <= t.due_at))} late=${count(callbacks, (t) => t.done_at !== null && t.due_at !== null && t.done_at > t.due_at)} open_escalated=${count(callbacks, (t) => t.done_at === null)}; open tasks: ${tally(plan.tasks.filter((t) => t.done_at === null).map((t) => t.kind))}`);
+  const { thisWeek, nextWeek, end } = demoWeeks(now);
+  for (const [id, name] of names) {
+    const mine = plan.bookings.filter((b) => b.designer_id === id);
+    if (mine.length === 0) continue;
+    const week = (from: Date, to: Date) => {
+      const rows = mine.filter((b) => b.start_at >= from && b.start_at < to);
+      return `${rows.length} (${tally(rows.map((b) => b.status))})`;
+    };
+    const leads = new Set(plan.enquiries.filter((e) => e.assigned_designer_id === id).map((e) => e.id));
+    const accepted = plan.handoffs.filter((h) => h.accepted_by === id);
+    console.log(`${name}: this week ${week(thisWeek, nextWeek)}, next week ${week(nextWeek, end)}; handoffs fast=${count(accepted, (h) => !h.reminded_at)} slow=${count(accepted, (h) => h.reminded_at !== null)}; won=${count(plan.enquiries, (e) => leads.has(e.id) && e.consult_result === "won")} lost=${count(plan.enquiries, (e) => leads.has(e.id) && e.consult_result === "lost")}; callbacks=${count(callbacks, (t) => leads.has(t.enquiry_id))}`);
+  }
   for (const [label, day] of [["today", today], ["tomorrow", tomorrow]] as const) {
     const rows = plan.bookings.filter((b) => istDay(b.start_at) === day).sort((a, b) => a.start_at.getTime() - b.start_at.getTime());
     console.log(`${label}: ${rows.map((b) => `${ist(b.start_at).toISOString().slice(11, 16)} ${b.consult_type} ${names.get(b.designer_id ?? "") ?? "unassigned"}${b.status === "booked" ? "" : ` (${b.status})`}`).join("; ") || "none"}`);
