@@ -3,7 +3,7 @@ import { SCHEMA_NAME } from "@/db/schema";
 import { designers, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
 import { requireStaff } from "@/lib/auth";
-import { Card, pct, RangePicker, Table } from "../ui";
+import { Badge, Card, MeterCell, PageHeader, pct, RangePicker, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -15,30 +15,35 @@ export default async function Designers({ searchParams }: { searchParams: Promis
   const limit = Number(values.accept_escalate_min ?? 30);
   return (
     <main className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Designers</h1>
+      <PageHeader title="Designers" eyebrow="How fast each designer picks up a handoff">
         <RangePicker range={range} path="/dashboard/designers" />
-      </div>
+      </PageHeader>
       <Card>
         <Table
           head={["Designer", "Assigned", "Median accept time", "Escalations", "Won", "Lost", "Won rate"]}
           rows={rows.map((row) => [
-            row.name,
+            <span key="n" className="font-medium">
+              {row.name}
+            </span>,
             row.assigned,
             row.median_accept_minutes === null ? (
               "-"
             ) : (
-              <span key="m" className={row.median_accept_minutes > limit ? "font-semibold text-red-700 dark:text-red-400" : ""}>
-                {row.median_accept_minutes} min
-              </span>
+              row.median_accept_minutes > limit ? (
+                <Badge key="m" tone="danger">
+                  {row.median_accept_minutes} min
+                </Badge>
+              ) : (
+                <span key="m">{row.median_accept_minutes} min</span>
+              )
             ),
             row.escalations,
             row.won,
             row.lost,
-            pct(row.won_rate),
+            row.won_rate === null ? "-" : <MeterCell key="r" value={row.won_rate} max={1}>{pct(row.won_rate)}</MeterCell>,
           ])}
         />
-        <p className="mt-3 text-xs text-zinc-500">Highlighted: median accept time above the {limit}-minute escalation threshold.</p>
+        <p className="mt-4 text-xs text-ink-soft">Highlighted: median accept time above the {limit}-minute escalation threshold.</p>
       </Card>
     </main>
   );

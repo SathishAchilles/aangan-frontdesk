@@ -9,7 +9,7 @@ import { loadReference, loadReplayRows, previewImpact } from "@/lib/settings/rep
 import { clearSettingsCache } from "@/lib/settings/store";
 import { validateSetting } from "@/lib/settings/validate";
 import { saveSetting } from "@/lib/settings/write";
-import { Card, istTime, OUTCOME_LABEL, Table } from "../ui";
+import { buttonPrimary, buttonSecondary, Card, inputClass, istTime, Notice, OUTCOME_LABEL, PageHeader, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -66,51 +66,56 @@ export default async function Settings({ searchParams }: { searchParams: Promise
 
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <PageHeader title="Settings" eyebrow="Admins only" />
+      <p className="max-w-3xl text-sm text-ink-muted">
         Every change needs a reason, is range-checked, and is kept in the history. Changes apply to the next call. There is no setting to quote prices: pricing.md forbids it.
       </p>
-      {params.saved && <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">Saved {params.saved}.</p>}
-      {params.error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">{params.key ? `${params.key}: ` : ""}{params.error}</p>}
+      {params.saved && <Notice tone="ok">Saved {params.saved}.</Notice>}
+      {params.error && (
+        <Notice tone="danger">
+          {params.key ? `${params.key}: ` : ""}
+          {params.error}
+        </Notice>
+      )}
 
       {SETTING_DEFINITIONS.map((definition) => {
         const row = byKey.get(definition.key);
         const isPreview = preview?.key === definition.key;
         return (
-          <Card key={definition.key} className="scroll-mt-4" title={undefined}>
-            <form action={save} id={definition.key} className="flex flex-col gap-2">
+          <Card key={definition.key} className="scroll-mt-6" title={undefined}>
+            <form action={save} id={definition.key} className="flex scroll-mt-6 flex-col gap-3">
               <input type="hidden" name="key" value={definition.key} />
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <Link href={`/dashboard/settings/${definition.key}`} className="font-mono text-sm font-semibold underline-offset-4 hover:underline">
+                <Link href={`/dashboard/settings/${definition.key}`} className="rounded-md font-mono text-sm font-semibold break-all text-ink underline decoration-line decoration-2 underline-offset-4 hover:decoration-accent">
                   {definition.key}
                 </Link>
-                <span className="text-xs text-zinc-500">
+                <span className="min-w-0 text-xs wrap-anywhere text-ink-soft">
                   default {show(definition.default)}
                   {definition.min !== undefined ? ` · range ${definition.min}-${definition.max}` : ""}
                   {definition.options ? ` · one of ${definition.options.join(", ")}` : ""}
                   {row ? ` · updated ${istTime(row.updated_at)}` : ""}
                 </span>
               </div>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">{definition.source}</p>
+              <p className="text-xs text-ink-muted">{definition.source}</p>
               <div className="flex flex-wrap gap-2">
-                <input name="value" defaultValue={isPreview ? params.value : show(row?.value ?? definition.default)} className="min-w-64 flex-1 rounded-md border border-zinc-300 px-2 py-1 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900" />
-                <input name="reason" placeholder="Reason for the change" className="min-w-48 flex-1 rounded-md border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
+                <input name="value" defaultValue={isPreview ? params.value : show(row?.value ?? definition.default)} className={`${inputClass} min-w-0 flex-1 basis-64 font-mono`} />
+                <input name="reason" placeholder="Reason for the change" aria-label="Reason for the change" className={`${inputClass} min-w-0 flex-1 basis-48`} />
                 {QUALIFICATION_KEYS.has(definition.key) && (
-                  <button name="intent" value="preview" className="rounded-md border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-700">
+                  <button name="intent" value="preview" className={buttonSecondary}>
                     Preview impact
                   </button>
                 )}
-                <button name="intent" value="save" className="rounded-md bg-zinc-900 px-3 py-1 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
+                <button name="intent" value="save" className={buttonPrimary}>
                   Save
                 </button>
-                <button name="intent" value="reset" className="rounded-md border border-zinc-300 px-3 py-1 text-sm dark:border-zinc-700">
+                <button name="intent" value="reset" className={buttonSecondary}>
                   Reset
                 </button>
               </div>
               {isPreview && preview && (
-                <div className="rounded-md bg-zinc-50 p-3 text-sm dark:bg-zinc-900">
+                <div className="flex flex-col gap-3 rounded-2xl bg-surface-2 p-4 text-sm">
                   {preview.error ? (
-                    <p className="text-red-700">{preview.error}</p>
+                    <p className="font-medium text-danger">{preview.error}</p>
                   ) : (
                     <>
                       <p>
@@ -127,11 +132,11 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       })}
 
       <Card title="Fixed monthly costs">
-        <form action={addFixedCost} id="fixed" className="mb-3 flex flex-wrap gap-2 text-sm">
-          <input name="month" placeholder="2026-10" className="w-28 rounded-md border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900" />
-          <input name="item" placeholder="Vaani plan" className="flex-1 rounded-md border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900" />
-          <input name="amount" placeholder="Amount in Rs" className="w-36 rounded-md border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900" />
-          <button className="rounded-md bg-zinc-900 px-3 py-1 text-white dark:bg-zinc-100 dark:text-zinc-900">Add</button>
+        <form action={addFixedCost} id="fixed" className="mb-4 flex scroll-mt-6 flex-wrap gap-2 text-sm">
+          <input name="month" placeholder="2026-10" aria-label="Month" className={`${inputClass} w-28`} />
+          <input name="item" placeholder="Vaani plan" aria-label="Item" className={`${inputClass} min-w-0 flex-1 basis-40`} />
+          <input name="amount" placeholder="Amount in Rs" aria-label="Amount in Rs" className={`${inputClass} w-36`} />
+          <button className={buttonPrimary}>Add</button>
         </form>
         <Table head={["Month", "Item", "Amount (Rs)"]} rows={fixed.map((row) => [row.month, row.item, row.amount])} empty="No fixed costs yet." />
       </Card>

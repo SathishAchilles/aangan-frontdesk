@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { maskPhone } from "@/lib/phone";
 import { requireStaff } from "@/lib/auth";
-import { Card, CRITERION_LABEL, inr, istTime, OUTCOME_LABEL, Table } from "../../ui";
+import { Badge, buttonSecondary, Card, CRITERION_LABEL, inr, istTime, Notice, OUTCOME_LABEL, Table } from "../../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -29,50 +30,55 @@ export default async function CallDetail({ params }: { params: Promise<{ id: str
 
   return (
     <main className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{call.name ?? "Caller"}</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <Link href="/dashboard/calls" className="w-fit rounded-full text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline">
+        ← Calls
+      </Link>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-light tracking-tight text-ink">{call.name ?? "Caller"}</h1>
+        <p className="text-sm text-ink-muted">
           {call.phone ? maskPhone(call.phone) : "No caller ID"} · {istTime(call.started_at)} IST · {call.duration_s ? `${Math.floor(call.duration_s / 60)}m ${call.duration_s % 60}s` : "-"}
           {call.dropped ? " · dropped" : ""}
         </p>
       </div>
-      {flags.length > 0 && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
-          Safety check failed on: {flags.map((line) => `“${line}”`).join("; ")}
-        </p>
-      )}
-      <div className="grid gap-4 md:grid-cols-2">
+      {flags.length > 0 && <Notice tone="danger">Safety check failed on: {flags.map((line) => `“${line}”`).join("; ")}</Notice>}
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Outcome">
-          <p className="mb-3 font-medium">{enquiry ? OUTCOME_LABEL[enquiry.outcome] ?? enquiry.outcome : "Not linked to an enquiry"}</p>
+          <p className="mb-4">
+            {enquiry ? (
+              <Badge tone={enquiry.outcome === "QUALIFIED" || enquiry.outcome === "QUALIFIED_WITH_NOTES" ? "accent" : "neutral"}>{OUTCOME_LABEL[enquiry.outcome] ?? enquiry.outcome}</Badge>
+            ) : (
+              <span className="text-sm text-ink-muted">Not linked to an enquiry</span>
+            )}
+          </p>
           {enquiry && (
             <Table
               head={["Check", "State", "Caller's words"]}
               rows={(Array.isArray(enquiry.criteria) ? enquiry.criteria : []).map((criterion) => [CRITERION_LABEL[criterion.id] ?? criterion.id, criterion.state.replace("_", " "), criterion.evidence || criterion.reason])}
             />
           )}
-          {enquiry?.flags?.length ? <p className="mt-3 text-xs text-zinc-500">Flags: {enquiry.flags.join(", ")}</p> : null}
+          {enquiry?.flags?.length ? <p className="mt-3 text-xs text-ink-soft">Flags: {enquiry.flags.join(", ")}</p> : null}
         </Card>
         <Card title="Booking and handoff">
           <Table head={["Consultation", "Type", "Status"]} rows={bookings.map((booking) => [istTime(booking.start_at), booking.consult_type, booking.status])} empty="No booking." />
-          <p className="mt-3 text-sm">
+          <p className="mt-4 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-ink-muted">
             Designer: {enquiry?.designer ?? "-"} · Posted {istTime(handoff?.posted_at ?? null)} · Accepted {handoff?.accepted_at ? `${istTime(handoff.accepted_at)} by ${handoff.accepter}` : "no"}
             {handoff?.escalated_at ? " · escalated" : ""}
           </p>
         </Card>
       </div>
       <Card title="Cost of this call">
-        <Table head={["Item", "Quantity", "Amount"]} rows={costs.map((cost) => [cost.kind, cost.qty, inr(cost.amount)])} empty="No costs recorded yet." />
+        <Table head={["Item", "Quantity", "Amount"]} rows={costs.map((cost) => [<span key="k" className="font-mono text-xs">{cost.kind}</span>, cost.qty, inr(cost.amount)])} empty="No costs recorded yet." />
       </Card>
       <Card title="Transcript">
-        {call.summary && <p className="mb-3 text-sm italic text-zinc-600 dark:text-zinc-400">{call.summary}</p>}
+        {call.summary && <p className="mb-4 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-ink-muted italic">{call.summary}</p>}
         {call.recording_url && (
-          <p className="mb-3 text-sm">
-            <a className="underline underline-offset-4" href={call.recording_url} rel="noreferrer" target="_blank">
+          <p className="mb-4 text-sm">
+            <a className={buttonSecondary + " inline-block"} href={call.recording_url} rel="noreferrer" target="_blank">
               Recording
             </a>
           </p>
         )}
-        <pre className="whitespace-pre-wrap text-sm leading-6">{call.transcript ?? "No transcript (not received yet, or removed after the retention period)."}</pre>
+        <pre className="max-h-[70vh] overflow-auto font-sans text-sm leading-7 whitespace-pre-wrap text-ink">{call.transcript ?? "No transcript (not received yet, or removed after the retention period)."}</pre>
       </Card>
     </main>
   );

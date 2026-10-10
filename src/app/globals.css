@@ -1,26 +1,124 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens: the whole palette lives here.
+ * Layout follows the exchange-dashboard reference (icon rail, pill controls, large rounded cards,
+ * light-weight headline numbers); colours are a restrained take on it: warm off-white or charcoal
+ * surfaces, hairline borders, diffuse shadows and a single slate-teal accent taken from the
+ * reference palette (#3E5B5F / #79A1A4). Text tokens meet WCAG AA on the surfaces they sit on.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f6f4ef;
+  --canvas-glow: #ebe8df;
+  --rail: #fbfaf7;
+  --rail-ink: #55535f;
+  --rail-hover: #f1efe9;
+  --rail-active: #e3ecea;
+  --rail-active-ink: #2c4447;
+  --surface: #fffefc;
+  --surface-2: #f3f1ec;
+  --line: #e7e3da;
+  --ink: #1e1d2b;
+  --ink-muted: #55535f;
+  --ink-soft: #6b6975;
+  --accent: #3e5b5f;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3ecea;
+  --accent-soft-ink: #2c4447;
+  --chart-2: #a9bdbc;
+  --ok: #2e6b3f;
+  --ok-bg: #e6efe7;
+  --warn: #7a5310;
+  --warn-bg: #f5eddc;
+  --danger: #9b2c2c;
+  --danger-bg: #f6e4e2;
+  --info: #2f4f73;
+  --info-bg: #e5ebf2;
+  --track: #ebe8e1;
+  --shadow: 0 1px 2px rgb(30 29 43 / 0.04), 0 10px 30px -14px rgb(30 29 43 / 0.1);
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #141519;
+    --canvas-glow: #1b2224;
+    --rail: #1a1b20;
+    --rail-ink: #b9b6ae;
+    --rail-hover: #23252b;
+    --rail-active: #22302f;
+    --rail-active-ink: #c3dad9;
+    --surface: #1c1e23;
+    --surface-2: #23262c;
+    --line: #2c2f36;
+    --ink: #ecebe6;
+    --ink-muted: #bbb8b0;
+    --ink-soft: #9c9991;
+    --accent: #8fb5b4;
+    --accent-ink: #0f1a1b;
+    --accent-soft: #22302f;
+    --accent-soft-ink: #c3dad9;
+    --chart-2: #4e6a6b;
+    --ok: #a3cdac;
+    --ok-bg: #1f2b23;
+    --warn: #e2c68f;
+    --warn-bg: #2d2719;
+    --danger: #e9aba6;
+    --danger-bg: #33211f;
+    --info: #abc2df;
+    --info-bg: #1e2633;
+    --track: #2c2f36;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 14px 36px -18px rgb(0 0 0 / 0.55);
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-active: var(--rail-active);
+  --color-rail-active-ink: var(--rail-active-ink);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-soft: var(--ink-soft);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-ink: var(--accent-soft-ink);
+  --color-chart-2: var(--chart-2);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-track: var(--track);
+  --shadow-card: var(--shadow);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    radial-gradient(70rem 40rem at 100% 0%, var(--canvas-glow), transparent 70%);
+  background-repeat: no-repeat;
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

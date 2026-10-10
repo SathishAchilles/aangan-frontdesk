@@ -3,7 +3,7 @@ import { SCHEMA_NAME } from "@/db/schema";
 import { costs, overview, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
 import { requireStaff } from "@/lib/auth";
-import { Card, inr, RangePicker, Stat, Table } from "../ui";
+import { Badge, Card, inr, MeterCell, PageHeader, RangePicker, Stat, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -27,28 +27,32 @@ export default async function Costs({ searchParams }: { searchParams: Promise<{ 
     select to_char(month, 'YYYY-MM') as month, item, amount_inr::float as amount from ${sql(`${SCHEMA_NAME}.fixed_costs`)}
     where month >= date_trunc('month', ${range.from}::date) and month < ${range.to}::date order by month, item`;
 
+  const usage = Object.entries(cost.by_kind);
+  const usageMax = Math.max(0, ...usage.map(([, amount]) => amount));
+  const fixedMax = Math.max(0, ...fixed.map((row) => row.amount));
+  const usageShare = cost.total_inr > 0 ? cost.variable_inr / cost.total_inr : 0;
+
   return (
     <main className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Costs</h1>
+      <PageHeader title="Costs" eyebrow="What the front desk costs to run">
         <RangePicker range={range} path="/dashboard/costs" />
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Total" value={inr(cost.total_inr)} hint={`${inr(cost.variable_inr)} usage + ${inr(cost.fixed_inr)} plans`} />
+      </PageHeader>
+      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-5">
+        <Stat tone="accent" label="Total" value={inr(cost.total_inr)} hint={`${inr(cost.variable_inr)} usage + ${inr(cost.fixed_inr)} plans`} meter={{ value: cost.variable_inr, max: cost.total_inr }} />
         <Stat label="Per call" value={inr(cost.per_call)} hint={`${data.calls} calls`} />
         <Stat label="Per qualified lead" value={inr(cost.per_qualified_lead)} hint={`${qualified} qualified`} />
         <Stat label="Per booking" value={inr(cost.per_booking)} hint={`${data.booked} booked`} />
         <Stat label="Per won project" value={inr(cost.per_won)} hint={`${data.won} won`} />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card title="Usage">
-          <Table head={["Item", "Amount"]} rows={Object.entries(cost.by_kind).map(([kind, amount]) => [KIND_LABEL[kind] ?? kind, inr(amount)])} empty="No usage recorded in this range." />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Usage" action={cost.total_inr > 0 ? <Badge>{`${Math.round(usageShare * 100)}% of the total`}</Badge> : undefined}>
+          <Table head={["Item", "Amount"]} rows={usage.map(([kind, amount]) => [KIND_LABEL[kind] ?? kind, <MeterCell key="a" value={amount} max={usageMax}>{inr(amount)}</MeterCell>])} empty="No usage recorded in this range." />
         </Card>
         <Card title="Fixed plans">
-          <Table head={["Month", "Item", "Amount"]} rows={fixed.map((row) => [row.month, row.item, inr(row.amount)])} empty="No fixed costs entered. Add them under Settings." />
+          <Table head={["Month", "Item", "Amount"]} rows={fixed.map((row) => [row.month, row.item, <MeterCell key="a" value={row.amount} max={fixedMax}>{inr(row.amount)}</MeterCell>])} empty="No fixed costs entered. Add them under Settings." />
         </Card>
       </div>
-      <p className="text-xs text-zinc-500">Unit prices are copied onto each cost line when it is recorded, so changing a price affects only later calls.</p>
+      <p className="text-xs text-ink-soft">Unit prices are copied onto each cost line when it is recorded, so changing a price affects only later calls.</p>
     </main>
   );
 }
