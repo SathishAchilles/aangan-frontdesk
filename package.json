@@ -16,7 +16,8 @@
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts aangan",
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "prebuild": "tsx scripts/check-env.ts",
-    "db:migrate:test": "tsx --env-file-if-exists=.env.local scripts/migrate.ts aangan_test"
+    "db:migrate:test": "tsx --env-file-if-exists=.env.local scripts/migrate.ts aangan_test",
+    "test:coverage": "vitest run --dir src --coverage --coverage.include='src/lib/rules/**' --coverage.exclude='**/*.test.ts' --coverage.thresholds.lines=90"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
@@ -35,6 +36,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.3",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",

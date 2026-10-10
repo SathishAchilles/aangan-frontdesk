@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { factsSchema } from "../lib/rules/facts";
 
 export const OUTCOMES = [
   "QUALIFIED",
@@ -16,20 +17,8 @@ export const provenanceSchema = z.object({
   status: z.enum(["provisional", "confirmed"]),
 });
 
-export const goldFactsSchema = z.object({
-  intent: z.enum(["new", "existing", "other"]),
-  project_type: z.enum(["residential", "commercial", "unknown"]).optional(),
-  segment: z.string().optional(),
-  scope_text: z.string().optional(),
-  rooms: z.array(z.string()).optional(),
-  sqft: z.number().positive().optional(),
-  locality: z.string().optional(),
-  deadline_text: z.string().optional(),
-  budget_text: z.string().optional(),
-  decision_text: z.string().optional(),
-  wants_human: z.boolean().optional(),
-  execution: z.enum(["yes", "no", "unknown"]).optional(),
-});
+// Gold facts use the same shape the voice agent extracts, so the gate reads both.
+export const goldFactsSchema = factsSchema;
 export type GoldFacts = z.infer<typeof goldFactsSchema>;
 
 // One labelled enquiry: a phone transcript or a case enquiry from any channel.
@@ -39,9 +28,14 @@ export const goldEnquirySchema = z.object({
   received_at: z.string().min(1),
   transcript: z.string().min(1),
   facts: goldFactsSchema,
-  expected_outcome: z.enum(OUTCOMES),
+  // false for records with no conversation to judge (for example a missed call).
+  gradable: z.boolean().default(true),
+  expected_outcome: z.enum(OUTCOMES).optional(),
   expected_reason: z.string().optional(),
+  note: z.string().optional(),
   provenance: provenanceSchema,
+}).refine((item) => !item.gradable || item.expected_outcome !== undefined, {
+  message: "gradable items need an expected_outcome",
 });
 export type GoldEnquiry = z.infer<typeof goldEnquirySchema>;
 

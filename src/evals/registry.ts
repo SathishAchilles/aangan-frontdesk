@@ -2,6 +2,7 @@ import type { Budget } from "./budget";
 import type { EvalReport } from "./types";
 import { buildReport } from "./report";
 import { dataIntegrity } from "./runners/data-integrity";
+import { gateAccuracy } from "./runners/gate-accuracy";
 
 export type EvalContext = {
   budget: Budget;
@@ -25,4 +26,5 @@ const noop: EvalRunner = async ({ budget }) =>
 export const EVALS: Record<string, EvalRunner> = {
   noop,
   "data-integrity": dataIntegrity,
+  "gate-accuracy": gateAccuracy,
 };

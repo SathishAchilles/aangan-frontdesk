@@ -37,10 +37,10 @@ jobs:
       - run: npm ci
       - name: Harness check
         run: npm run eval -- noop
-      # Real evals replace these stubs as their task groups land (gate-accuracy, tool-leakage, agent-sim, note-accuracy).
+      # Agent and note evals replace their noop stubs when those task groups land.
       - name: Rules evals
         if: steps.changed.outputs.rules == 'true'
-        run: npm run eval -- noop
+        run: npm run eval -- gate-accuracy
       - name: Agent evals
         if: steps.changed.outputs.agent == 'true'
         env:
