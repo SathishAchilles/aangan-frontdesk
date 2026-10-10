@@ -177,7 +177,7 @@ out.append('<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerW
            '<marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C0392B"/></marker>'
            '<marker id="arrOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#C27420"/></marker></defs>')
 out.append(f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>')
-out.append(f'<text x="20" y="48" font-size="30" font-weight="700" fill="#1F2328">Aangan Studio · Phone enquiry components map (v6, as designed 11 Oct 2026)</text>')
+out.append(f'<text x="20" y="48" font-size="30" font-weight="700" fill="#1F2328">Aangan Studio · Phone enquiry components map</text>')
 out.append(f'<text x="20" y="80" font-size="16" fill="#5B6470">Inbound phone only · the gate decides during the call · Telegram never contacts callers · no SMS, no email</text>')
 
 # header
