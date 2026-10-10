@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, rawSql } from "../../src/db/client";
 import { createPipelineRepo } from "../../src/lib/pipeline/repo";
 import { processVaaniEvent, vaaniEventSchema } from "../../src/lib/pipeline/vaani-events";
-import { fromIst } from "../../src/lib/rules/time";
 import { clearSettingsCache, loadSettings } from "../../src/lib/settings/store";
 import { evaluateEnquiry } from "../../src/lib/tools/handlers";
 import { createToolRepo } from "../../src/lib/tools/repo";

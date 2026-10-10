@@ -14,6 +14,8 @@ jobs:
   evals:
     name: evals
     runs-on: ubuntu-latest
+    env:
+      HAS_GEMINI: ${{ secrets.GEMINI_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -35,24 +37,24 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Harness check
-        run: npm run eval -- noop
+      - name: Harness and idempotency checks
+        run: npm run eval -- noop && npm run eval -- idempotency
       # Agent and note evals replace their noop stubs when those task groups land.
       - name: Rules evals
         if: steps.changed.outputs.rules == 'true'
         run: npm run eval -- gate-accuracy
       - name: Agent evals
-        if: steps.changed.outputs.agent == 'true'
+        if: steps.changed.outputs.agent == 'true' && env.HAS_GEMINI == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EVAL_BUDGET_INR: 300
-        run: npm run eval -- noop
+        run: npm run eval -- agent-sim --runs 1 --no-persist
       - name: Note evals
-        if: steps.changed.outputs.note == 'true'
+        if: steps.changed.outputs.note == 'true' && env.HAS_GEMINI == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          EVAL_BUDGET_INR: 300
-        run: npm run eval -- noop
+          EVAL_BUDGET_INR: 30
+        run: npm run eval -- note-accuracy --no-persist
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4

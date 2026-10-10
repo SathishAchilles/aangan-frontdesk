@@ -4,6 +4,8 @@ import { buildReport } from "./report";
 import { agentSim } from "./runners/agent-sim";
 import { dataIntegrity } from "./runners/data-integrity";
 import { gateAccuracy } from "./runners/gate-accuracy";
+import { idempotency } from "./runners/idempotency";
+import { noteAccuracy } from "./runners/note-accuracy";
 import { slotCompliance } from "./runners/slot-compliance";
 import { toolLatency, toolLeakage } from "./runners/tools";
 
@@ -34,4 +36,6 @@ export const EVALS: Record<string, EvalRunner> = {
   "tool-leakage": toolLeakage,
   "slot-compliance": slotCompliance,
   "agent-sim": agentSim,
+  "note-accuracy": noteAccuracy,
+  idempotency,
 };
