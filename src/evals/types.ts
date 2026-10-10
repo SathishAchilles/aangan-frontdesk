@@ -42,6 +42,8 @@ export type GoldEnquiry = z.infer<typeof goldEnquirySchema>;
 export const personaSchema = z.object({
   id: z.string().min(1),
   based_on: z.string().optional(),
+  // When the simulated call happens (IST offset), so time-dependent rules are reproducible.
+  call_at: z.string().min(1),
   brief: z.string().min(1),
   opening_line: z.string().min(1),
   facts: goldFactsSchema,

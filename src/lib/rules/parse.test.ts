@@ -39,6 +39,11 @@ describe("parseMoneyInr", () => {
     ["around 1.2 crore", 12000000, 12000000],
     ["Rs 500000", 500000, 500000],
     ["18-22 lakh", 1800000, 2200000],
+    ["two lakh in total", 200000, 200000],
+    ["one and a half lakh max", 150000, 150000],
+    ["twenty five lakh", 2500000, 2500000],
+    ["a lakh or so", 100000, 100000],
+    ["one to one and a half lakh", 100000, 150000],
   ])("%s", (text, min, max) => {
     expect(parseMoneyInr(text)).toEqual({ min, max });
   });

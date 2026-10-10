@@ -26,10 +26,31 @@ export type MoneyRange = { min: number; max: number };
 
 const SCALE: Record<string, number> = { lakh: 1e5, lakhs: 1e5, lac: 1e5, lacs: 1e5, l: 1e5, crore: 1e7, crores: 1e7, cr: 1e7, k: 1e3, thousand: 1e3 };
 
-// "1 to 1.5 lakh maximum", "₹15–20 lakh", "Rs 60-80 lakh all-in", "4-5 lakh", "1.2 crore", "500000"
+const UNITS: Record<string, number> = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+};
+const TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+
+// "two" -> "2", "twenty five" -> "25", "one and a half" -> "1.5", "a lakh" -> "1 lakh" (speech-to-text often spells numbers).
+export function spokenNumbersToDigits(text: string): string {
+  const word = String.raw`(?:${[...Object.keys(TENS), ...Object.keys(UNITS)].join("|")})`;
+  return text
+    .replace(new RegExp(String.raw`\b(${word})(?:[\s-]+(${word}))?(\s+and\s+a\s+half)?\b`, "gi"), (match, first: string, second: string | undefined, half: string | undefined) => {
+      const a = first.toLowerCase();
+      const b = second?.toLowerCase();
+      let value = TENS[a] !== undefined && b !== undefined && UNITS[b] !== undefined && UNITS[b] < 10 ? TENS[a] + UNITS[b] : (TENS[a] ?? UNITS[a]);
+      if (b !== undefined && !(TENS[a] !== undefined && UNITS[b] !== undefined && UNITS[b] < 10)) return match;
+      if (half) value += 0.5;
+      return String(value);
+    })
+    .replace(/\b(?:a|one)\s+(lakh|lac|crore)\b/gi, "1 $1");
+}
+
+// "1 to 1.5 lakh maximum", "₹15–20 lakh", "Rs 60-80 lakh all-in", "4-5 lakh", "1.2 crore", "500000", "two lakh"
 export function parseMoneyInr(text: string | undefined): MoneyRange | undefined {
   if (!text) return undefined;
-  const t = text.toLowerCase().replace(/rs\.?|inr|₹|rupees?/g, " ");
+  const t = spokenNumbersToDigits(text).toLowerCase().replace(/rs\.?|inr|₹|rupees?/g, " ");
   const range = t.match(
     /(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|cr|k|thousand)?\s*(?:-|–|—|to)\s*(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|cr|l|k|thousand)\b/,
   );
