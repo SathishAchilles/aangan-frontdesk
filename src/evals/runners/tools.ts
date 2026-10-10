@@ -42,23 +42,26 @@ export const toolLatency: EvalRunner = async ({ budget, args }) => {
     const phone = `${TEST_PREFIX}${String(i % 40).padStart(5, "0")}`;
     const isLookup = i % 3 === 0;
     const path = isLookup ? "lookup-caller" : "evaluate-enquiry";
-    const body = isLookup ? { phone } : { phone, facts: FACT_SETS[i % FACT_SETS.length], asked: i % 2 ? ["C1"] : [] };
+    // Same shape as Vaani: fact fields at the top level.
+    const body = isLookup ? { phone } : { phone, ...FACT_SETS[i % FACT_SETS.length], asked: i % 2 ? ["C1"] : [] };
     const started = performance.now();
     const response = await fetch(`${base}/api/vaani/tools/${path}`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-tool-key": key },
       body: JSON.stringify(body),
     });
-    await response.text();
+    const text = await response.text();
     const ms = performance.now() - started;
     timings.push(ms);
-    if (response.status >= 500) serverErrors += 1;
+    // The routes answer Vaani with 200 even on failure; a crash shows as error "internal".
+    const failed = response.status >= 500 || /"error":"internal"/.test(text);
+    if (failed) serverErrors += 1;
     items.push({
       item_id: `${path}#${i}`,
       expected: "2xx under 1500 ms",
       actual: { status: response.status, ms: Math.round(ms) },
       scores: { ms: Math.round(ms), status: response.status },
-      passed: response.status < 500 && ms < 1500,
+      passed: !failed && ms < 1500,
     });
   }
 

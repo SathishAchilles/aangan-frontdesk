@@ -36,18 +36,19 @@ describe("toolRoute", () => {
     expect((await toolRoute(handler)(request("{}", SECRET))).status).toBe(401);
   });
 
-  it("returns 400 with a spoken retry line for a non-JSON body", async () => {
+  // Vaani drops the body of non-2xx replies, so everything the agent must hear comes back as 200.
+  it("answers 200 with a spoken retry line for a non-JSON body", async () => {
     const response = await toolRoute(handler)(request("not json", SECRET));
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
     expect((await response.json()).say_line).toMatch(/say that again/);
   });
 
-  it("returns 500 with a spoken fallback when the handler throws", async () => {
+  it("answers 200 with a spoken fallback when the handler throws", async () => {
     const failing = vi.fn(async () => {
       throw new Error("db down");
     });
     const response = await toolRoute(failing)(request("{}", SECRET));
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(200);
     expect((await response.json()).say_line).toMatch(/call you back/);
   });
 });

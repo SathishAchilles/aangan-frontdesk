@@ -75,19 +75,21 @@ export async function lookupCaller(input: unknown, deps: ToolDeps): Promise<Tool
 export async function evaluateEnquiry(input: unknown, deps: ToolDeps): Promise<ToolResponse> {
   const parsed = evaluateEnquiryRequest.safeParse(input ?? {});
   if (!parsed.success) return badRequest(parsed.error.message);
-  const phone = toE164(parsed.data.phone);
-  if (!phone) return { status: 400, body: { ok: false, error: "invalid phone", say_line: ASK_NUMBER } };
+  const existing = parsed.data.enquiry_id ? await deps.repo.getEnquiry(parsed.data.enquiry_id) : null;
+  // The model does not always pass the phone. An existing enquiry identifies the caller; without
+  // either, nothing can be saved yet, so the agent is told to ask for the number.
+  if (parsed.data.phone === undefined && !existing) {
+    return { status: 200, body: { ok: true, outcome: "PENDING", asking: "phone", next_question: ASK_NUMBER } };
+  }
+  const phone = parsed.data.phone === undefined ? null : toE164(parsed.data.phone);
+  if (parsed.data.phone !== undefined && !phone) return { status: 400, body: { ok: false, error: "invalid phone", say_line: ASK_NUMBER } };
 
   const now = deps.now();
   const { rules, version } = await deps.settings();
-  const caller = await deps.repo.upsertCaller(phone);
+  const callerId = phone ? (await deps.repo.upsertCaller(phone)).id : existing!.callerId;
 
-  let enquiry: EnquiryRecord | null = null;
-  if (parsed.data.enquiry_id) {
-    enquiry = await deps.repo.getEnquiry(parsed.data.enquiry_id);
-    if (enquiry && enquiry.callerId !== caller.id) enquiry = null;
-  }
-  enquiry ??= await deps.repo.createEnquiry(caller.id, parsed.data.intent);
+  let enquiry: EnquiryRecord | null = existing && existing.callerId === callerId ? existing : null;
+  enquiry ??= await deps.repo.createEnquiry(callerId, parsed.data.intent);
 
   const facts = mergeFacts(enquiry.facts, { ...parsed.data.facts, intent: parsed.data.intent });
   const asked = [...new Set([...enquiry.asked, ...parsed.data.asked])];

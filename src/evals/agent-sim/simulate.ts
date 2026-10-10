@@ -67,8 +67,8 @@ export async function simulateCall(
     let response: { status: number; body: Record<string, unknown> };
     if (name === TOOL.lookupCaller) response = await lookupCaller(args, toolDeps);
     else if (name === TOOL.evaluateEnquiry) {
-      const { enquiry_id, phone, intent, asked, ...facts } = args;
-      response = await evaluateEnquiry({ enquiry_id, phone, intent, asked, facts }, toolDeps);
+      // Arguments go through exactly as Vaani sends them (fact fields at the top level).
+      response = await evaluateEnquiry(args, toolDeps);
       if (typeof response.body.outcome === "string") lastOutcome = response.body.outcome;
     } else if (name === TOOL.getSlots) {
       response = await getSlots(args, bookingDeps);

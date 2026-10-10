@@ -114,10 +114,23 @@ describe("evaluate_enquiry", () => {
     expect(mine.body.enquiry_id).not.toBe(other.body.enquiry_id);
   });
 
-  it("rejects a missing phone with a line the agent can say", async () => {
+  it("asks for the number when neither a phone nor an enquiry is given", async () => {
     const response = await evaluateEnquiry({ facts: {} }, fakeDeps(OPEN));
-    expect(response.status).toBe(400);
-    expect(response.body.say_line).toBeTruthy();
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ outcome: "PENDING", asking: "phone" });
+    expect(response.body.next_question).toMatch(/number/);
+  });
+
+  it("accepts fact fields at the top level, as Vaani sends them", async () => {
+    const response = await evaluateEnquiry({ phone: PHONE, ...QUALIFIED_FACTS }, fakeDeps(OPEN));
+    expect(response.body).toMatchObject({ outcome: "QUALIFIED", consult_type: "studio" });
+  });
+
+  it("continues an enquiry by id when the phone is left out", async () => {
+    const deps = fakeDeps(OPEN);
+    const first = await evaluateEnquiry({ phone: PHONE, project_type: "residential", execution: "yes", scope_text: "Redo the whole 3BHK" }, deps);
+    const second = await evaluateEnquiry({ enquiry_id: first.body.enquiry_id, ...QUALIFIED_FACTS }, deps);
+    expect(second.body).toMatchObject({ enquiry_id: first.body.enquiry_id, outcome: "QUALIFIED" });
   });
 
   it("rejects an unusable phone by asking for the number", async () => {

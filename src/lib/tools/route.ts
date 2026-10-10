@@ -23,7 +23,7 @@ export function toolRoute(handler: Handler) {
     } catch {
       return NextResponse.json(
         { ok: false, error: "body must be JSON", say_line: "Sorry, I didn't catch that properly. Could you say that again?" },
-        { status: 400 },
+        { status: 200 },
       );
     }
     try {
@@ -31,10 +31,12 @@ export function toolRoute(handler: Handler) {
       const response = await handler(input, deps);
       // Field names and expected types only, so a mismatch with Vaani's request shape shows in the logs.
       if (response.status === 400) log.warn("tool input rejected", { tool: new URL(request.url).pathname, error: (response.body as { error?: unknown }).error });
-      return NextResponse.json(response.body, { status: response.status });
+      // Vaani does not pass the body of a non-2xx reply to the model, which then makes up a line.
+      // Every answer the agent should hear goes back as 200; auth failures stay 401.
+      return NextResponse.json(response.body, { status: 200 });
     } catch (error) {
       log.error("tool failed", error);
-      return NextResponse.json({ ok: false, error: "internal", say_line: FAILURE_LINE }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "internal", say_line: FAILURE_LINE }, { status: 200 });
     }
   };
 }

@@ -11,13 +11,23 @@ export const lookupCallerRequest = z.object({
   vaani_call_id: z.string().optional(),
 });
 
-export const evaluateEnquiryRequest = z.object({
-  enquiry_id: z.uuid().optional(),
-  phone: z.string().min(1),
-  intent: z.enum(["new", "existing", "other"]).default("new"),
-  facts: factsSchema.partial().default({}),
-  asked: z.array(z.enum(["C1", "C2", "C3"])).default([]),
-});
+// Vaani sends the fact fields at the top level (as declared in the tool spec); tests and scripts may
+// nest them under `facts`. Both are accepted: top-level fact fields are folded into `facts`.
+export const evaluateEnquiryRequest = z.preprocess(
+  (input) => {
+    if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+    const { enquiry_id, phone, intent, asked, facts, ...rest } = input as Record<string, unknown>;
+    const nested = facts && typeof facts === "object" && !Array.isArray(facts) ? facts : {};
+    return { enquiry_id, phone, intent, asked, facts: { ...rest, ...nested } };
+  },
+  z.object({
+    enquiry_id: z.uuid().optional(),
+    phone: z.string().min(1).optional(),
+    intent: z.enum(["new", "existing", "other"]).default("new"),
+    facts: factsSchema.partial().default({}),
+    asked: z.array(z.enum(["C1", "C2", "C3"])).default([]),
+  }),
+);
 
 export const logIntentRequest = z.object({
   phone: z.string().optional(),
