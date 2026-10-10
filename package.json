@@ -13,9 +13,10 @@
     "test:integration": "vitest run --dir tests/integration",
     "eval": "tsx --env-file-if-exists=.env.local scripts/eval.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts aangan",
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
-    "prebuild": "tsx scripts/check-env.ts"
+    "prebuild": "tsx scripts/check-env.ts",
+    "db:migrate:test": "tsx --env-file-if-exists=.env.local scripts/migrate.ts aangan_test"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
