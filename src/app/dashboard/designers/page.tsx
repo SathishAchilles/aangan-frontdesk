@@ -1,16 +1,21 @@
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { designers, parseRange } from "@/lib/dashboard/metrics";
+import { schedule } from "@/lib/dashboard/schedule";
 import { loadSettings } from "@/lib/settings/store";
 import { requireStaff } from "@/lib/auth";
 import { Badge, Card, MeterCell, PageHeader, pct, RangePicker, Table } from "../ui";
+import { ConsultationCalendar, parseCalendar, type CalendarParams } from "./calendar";
 
 export const dynamic = "force-dynamic";
 
-export default async function Designers({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+export default async function Designers({ searchParams }: { searchParams: Promise<CalendarParams> }) {
   await requireStaff();
-  const range = parseRange(await searchParams);
-  const rows = await designers(rawSql(), SCHEMA_NAME, range);
+  const params = await searchParams;
+  const range = parseRange(params);
+  const now = new Date();
+  const cal = parseCalendar(params, now);
+  const [rows, meetings] = await Promise.all([designers(rawSql(), SCHEMA_NAME, range), schedule(rawSql(), SCHEMA_NAME, cal.start, cal.end, cal.designer)]);
   const { values } = await loadSettings();
   const limit = Number(values.accept_escalate_min ?? 30);
   return (
@@ -45,6 +50,7 @@ export default async function Designers({ searchParams }: { searchParams: Promis
         />
         <p className="mt-4 text-xs text-ink-soft">Highlighted: median accept time above the {limit}-minute escalation threshold.</p>
       </Card>
+      <ConsultationCalendar params={params} cal={cal} meetings={meetings} designers={rows.map((row) => ({ id: row.id, name: row.name }))} now={now} />
     </main>
   );
 }
