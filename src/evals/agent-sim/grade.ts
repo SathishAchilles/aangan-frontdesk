@@ -5,7 +5,10 @@ import type { Persona } from "../types";
 import type { SimResult } from "./simulate";
 
 export type CallGrade = {
+  // Same routing: QUALIFIED and QUALIFIED_WITH_NOTES both book and hand off; the difference is
+  // only whether the note flags something the caller did not volunteer (the agent never asks C4/C5).
   outcome_match: boolean;
+  exact_outcome_match: boolean;
   tool_correct: boolean;
   tool_issues: string[];
   one_question_rate: number;
@@ -58,7 +61,10 @@ export function gradeCall(persona: Persona, result: SimResult): CallGrade {
   }
 
   return {
-    outcome_match: result.final_outcome === persona.expected_outcome,
+    outcome_match:
+      result.final_outcome === persona.expected_outcome ||
+      (QUALIFYING.has(result.final_outcome ?? "") && QUALIFYING.has(persona.expected_outcome)),
+    exact_outcome_match: result.final_outcome === persona.expected_outcome,
     tool_correct: issues.length === 0,
     tool_issues: issues,
     one_question_rate: oneQuestionPerTurn(agentTurns.slice(1)),

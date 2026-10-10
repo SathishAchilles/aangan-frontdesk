@@ -1,0 +1,1 @@
+ALTER TABLE "aangan"."handoffs" ADD COLUMN "note" jsonb;

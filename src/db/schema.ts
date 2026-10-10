@@ -161,6 +161,7 @@ export const handoffs = aangan
       .references(() => enquiries.id),
     chatId: bigint("chat_id", { mode: "number" }),
     messageId: integer("message_id"),
+    note: jsonb("note"),
     postedAt: ts("posted_at"),
     acceptedBy: uuid("accepted_by").references(() => staff.id),
     acceptedAt: ts("accepted_at"),

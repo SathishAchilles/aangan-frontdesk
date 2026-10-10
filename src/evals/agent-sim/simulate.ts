@@ -115,7 +115,10 @@ export async function simulateCall(
       const content = response.candidates?.[0]?.content;
       if (content) agentContents.push(content);
       const calls = response.functionCalls ?? [];
-      const text = response.text?.trim() ?? "";
+      const text = (content?.parts ?? [])
+        .map((part) => part.text ?? "")
+        .join(" ")
+        .trim();
       if (text) agentText = agentText ? `${agentText} ${text}` : text;
       if (calls.length === 0) break;
       const parts = [];

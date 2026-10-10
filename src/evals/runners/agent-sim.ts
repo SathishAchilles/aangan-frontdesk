@@ -45,6 +45,7 @@ export const agentSim: EvalRunner = async ({ budget, args }) => {
           actual: { outcome: result.final_outcome, ended_by: result.ended_by, grade, transcript: result.transcript, tools: result.tools.map(({ name, args: toolArgs, status, body }) => ({ name, args: toolArgs, status, outcome: body.outcome })) },
           scores: {
             outcome_match: grade.outcome_match,
+            exact_outcome_match: grade.exact_outcome_match,
             tool_correct: grade.tool_correct,
             one_question_rate: grade.one_question_rate,
             reasks: grade.reasks,
@@ -73,6 +74,7 @@ export const agentSim: EvalRunner = async ({ budget, args }) => {
     calls: items.length,
     errors: items.length - graded.length,
     outcome_rate: share((item) => item.scores.outcome_match === true),
+    exact_outcome_rate: share((item) => item.scores.exact_outcome_match === true),
     tool_correct_rate: share((item) => item.scores.tool_correct === true),
     one_question_rate: graded.reduce((sum, item) => sum + Number(item.scores.one_question_rate), 0) / callsWithTurns,
     reask_rate: share((item) => Number(item.scores.reasks) > 0),
