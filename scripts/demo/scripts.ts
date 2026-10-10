@@ -46,7 +46,7 @@ export function qualifiedTurns(p: Persona, notes: "none" | "decider" | "behalf")
   if (p.askedPrice) turns.push(["USER", "Roughly what does something like this cost?"], ["AGENT", PRICE_LINE]);
   if (notes === "decider") turns.push(["AGENT", "Who else will be part of the decision on the design?"], ["USER", "I'm not sure yet, we'll see."]);
   if (notes === "behalf") turns.push(["USER", "Actually I'm calling for my parents, it's their flat. They'll decide."], ["AGENT", "Of course. It would be good to have them at the consultation."]);
-  if (notes === "none" && p.decider) turns.push(["USER", `${p.decider[0].toUpperCase()}${p.decider.slice(1)}.`]);
+  if (notes === "none" && p.decider) turns.push(["AGENT", "Who else will be part of the decision on the design?"], ["USER", `${p.decider[0].toUpperCase()}${p.decider.slice(1)}.`]);
   turns.push(
     ["AGENT", `Thank you, that's everything I need. The next step is ${CONSULT_WORDS[p.consult]}. Shall I book the earliest slot for you?`],
     ...(p.booked
