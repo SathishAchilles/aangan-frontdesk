@@ -9,6 +9,8 @@ export type CallGrade = {
   // only whether the note flags something the caller did not volunteer (the agent never asks C4/C5).
   outcome_match: boolean;
   exact_outcome_match: boolean;
+  // The simulated caller asked for a person, so NEEDS_HUMAN is the correct routing whatever the persona expected.
+  caller_requested_person: boolean;
   tool_correct: boolean;
   tool_issues: string[];
   one_question_rate: number;
@@ -60,10 +62,13 @@ export function gradeCall(persona: Persona, result: SimResult): CallGrade {
     recap = /call you back|call back|get back to you/i.test(agentTurns.slice(-3).join(" "));
   }
 
+  const callerRequestedPerson = result.tools.some((call) => call.name === "evaluate_enquiry" && call.args.wants_human === true);
   return {
+    caller_requested_person: callerRequestedPerson,
     outcome_match:
       result.final_outcome === persona.expected_outcome ||
-      (QUALIFYING.has(result.final_outcome ?? "") && QUALIFYING.has(persona.expected_outcome)),
+      (QUALIFYING.has(result.final_outcome ?? "") && QUALIFYING.has(persona.expected_outcome)) ||
+      (callerRequestedPerson && result.final_outcome === "NEEDS_HUMAN"),
     exact_outcome_match: result.final_outcome === persona.expected_outcome,
     tool_correct: issues.length === 0,
     tool_issues: issues,
