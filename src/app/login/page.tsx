@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/authz";
 import { MIN_PASSWORD_LENGTH, toAuthPassword } from "@/lib/password";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -14,7 +15,8 @@ async function signIn(formData: FormData) {
   const supabase = await supabaseServer();
   const { error } = await supabase.auth.signInWithPassword({ email, password: padded.authPassword });
   if (error) redirect(`/login?error=invalid&next=${encodeURIComponent(next)}`);
-  redirect(next.startsWith("/dashboard") ? next : "/dashboard");
+  // Designers who land on the dashboard are sent on to /designer by requireStaff.
+  redirect(safeNext(next));
 }
 
 const MESSAGES: Record<string, string> = {

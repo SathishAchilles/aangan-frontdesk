@@ -12,6 +12,13 @@ describe("proxy", () => {
     const response = await proxy(new NextRequest("https://aangan-frontdesk.vercel.app/dashboard/settings"));
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://aangan-frontdesk.vercel.app/login?next=%2Fdashboard%2Fsettings");
-    expect(config.matcher).toEqual(["/dashboard/:path*"]);
+    expect(config.matcher).toEqual(["/dashboard/:path*", "/designer/:path*"]);
+  });
+
+  it("protects the designer area the same way", async () => {
+    const { proxy } = await import("./proxy");
+    const response = await proxy(new NextRequest("https://aangan-frontdesk.vercel.app/designer/leads"));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://aangan-frontdesk.vercel.app/login?next=%2Fdesigner%2Fleads");
   });
 });
