@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { forbidden, redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { staff } from "@/db/schema";
-import { authorize, DASHBOARD_ROLES, type StaffRole } from "./authz";
+import { authorize, DASHBOARD_ROLES, redirectInsteadOfForbidden, type StaffRole } from "./authz";
 import { supabaseServer } from "./supabase/server";
 
 export type CurrentStaff = { id: string; name: string; role: StaffRole; email: string | null };
@@ -27,6 +27,10 @@ export async function requireStaff(roles: readonly StaffRole[] = DASHBOARD_ROLES
   const me = await currentStaff();
   const access = authorize(me, roles);
   if (access === "login" || !me) redirect("/login?error=not-staff");
-  if (access === "forbidden") forbidden();
+  if (access === "forbidden") {
+    const elsewhere = redirectInsteadOfForbidden(me, roles);
+    if (elsewhere) redirect(elsewhere);
+    forbidden();
+  }
   return me;
 }

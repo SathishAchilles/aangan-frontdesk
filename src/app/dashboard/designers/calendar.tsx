@@ -79,13 +79,18 @@ const timeRange = (meeting: Meeting) => {
 };
 const dayLabel = (date: string, options: Intl.DateTimeFormatOptions) => new Date(`${date}T12:00:00+05:30`).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", ...options });
 
-function href(params: CalendarParams, change: Partial<Record<keyof CalendarParams, string | undefined>>) {
-  const merged: Record<string, string | undefined> = { from: params.from, to: params.to, view: params.view, week: params.week, date: params.date, designer: params.designer, ...change };
+// Where the calendar's links point. The admin designers page uses the defaults; the designer area
+// passes its own page, the params it must keep (such as an admin's `as`) and its own lead links.
+export type CalendarLinks = { base?: string; keep?: Record<string, string | undefined>; meeting?: (meeting: Meeting) => string | null; openLabel?: string; designerFilter?: boolean };
+const callLink = (meeting: Meeting) => (meeting.call_id ? `/dashboard/calls/${meeting.call_id}` : null);
+
+function href(params: CalendarParams, change: Partial<Record<keyof CalendarParams, string | undefined>>, links: CalendarLinks = {}) {
+  const merged: Record<string, string | undefined> = { from: params.from, to: params.to, view: params.view, week: params.week, date: params.date, designer: params.designer, ...change, ...links.keep };
   const query = Object.entries(merged)
     .filter(([, value]) => value)
     .map(([key, value]) => `${key}=${encodeURIComponent(value as string)}`)
     .join("&");
-  return `/dashboard/designers${query ? `?${query}` : ""}#schedule`;
+  return `${links.base ?? "/dashboard/designers"}${query ? `?${query}` : ""}#schedule`;
 }
 
 const pill = "inline-flex items-center rounded-full px-3.5 py-1.5 text-sm whitespace-nowrap transition";
@@ -107,7 +112,7 @@ function StatusTag({ status }: { status: Meeting["status"] }) {
 }
 
 // The detail card shown on hover or focus: everything useful before the visit, and nothing priced.
-function Details({ meeting, tint, placement }: { meeting: Meeting; tint: Tint; placement: string }) {
+function Details({ meeting, tint, placement, openLabel }: { meeting: Meeting; tint: Tint; placement: string; openLabel: string | null }) {
   return (
     <span
       className={`pointer-events-none absolute z-30 hidden w-64 flex-col gap-1.5 rounded-2xl border border-line bg-surface p-3.5 text-left text-xs leading-snug text-ink no-underline shadow-card group-hover:flex group-focus-visible:flex ${placement}`}
@@ -127,12 +132,12 @@ function Details({ meeting, tint, placement }: { meeting: Meeting; tint: Tint; p
       {meeting.locality && <span className="text-ink-muted">{meeting.locality}</span>}
       {meeting.scope && <span className="text-ink">{meeting.scope}</span>}
       {meeting.phone_masked && <span className="font-mono text-ink-muted">{meeting.phone_masked}</span>}
-      <span className="pt-0.5 font-medium text-accent">{meeting.call_id ? "Open the enquiry call →" : "No call recorded for this enquiry"}</span>
+      <span className="pt-0.5 font-medium text-accent">{openLabel ?? "No call recorded for this enquiry"}</span>
     </span>
   );
 }
 
-function Block({ meeting, tint, lane, lanes, placement }: { meeting: Meeting; tint: Tint; lane: number; lanes: number; placement: string }) {
+function Block({ meeting, tint, lane, lanes, placement, link, openLabel }: { meeting: Meeting; tint: Tint; lane: number; lanes: number; placement: string; link: string | null; openLabel: string }) {
   const { start, end } = span(meeting);
   const top = Math.max(start, DAY_START_MIN);
   const bottom = Math.max(top + SLOT_MIN, Math.min(end, DAY_END_MIN));
@@ -171,12 +176,12 @@ function Block({ meeting, tint, lane, lanes, placement }: { meeting: Meeting; ti
         {!short && <span className={`mt-0.5 shrink-0 truncate text-[0.8125rem] font-medium ${nameClass}`}>{shownName}</span>}
         {!short && !narrow && meeting.locality && bottom - top >= 60 && <span className="shrink-0 truncate text-[0.6875rem] text-ink-muted">{meeting.locality}</span>}
       </span>
-      <Details meeting={meeting} tint={tint} placement={placement} />
+      <Details meeting={meeting} tint={tint} placement={placement} openLabel={link ? openLabel : null} />
     </>
   );
   const className = `group absolute rounded-xl border border-l-[3px] ring-2 ring-surface border-(--tint-edge) bg-(--tint-bg) px-2 py-1 text-left hover:z-20! focus-visible:z-20! motion-safe:transition-shadow hover:shadow-card ${cancelled ? "border-dashed" : ""}`;
-  return meeting.call_id ? (
-    <Link href={`/dashboard/calls/${meeting.call_id}`} className={className} style={style}>
+  return link ? (
+    <Link href={link} className={className} style={style}>
       {body}
     </Link>
   ) : (
@@ -188,7 +193,7 @@ function Block({ meeting, tint, lane, lanes, placement }: { meeting: Meeting; ti
 
 type Column = { key: string; label: ReactNode; day: string; meetings: Meeting[]; today: boolean; emptyText: string };
 
-function Grid({ columns, tints, now, minColRem }: { columns: Column[]; tints: (meeting: Meeting) => Tint; now: Date; minColRem: number }) {
+function Grid({ columns, tints, now, minColRem, meetingLink, openLabel }: { columns: Column[]; tints: (meeting: Meeting) => Tint; now: Date; minColRem: number; meetingLink: (meeting: Meeting) => string | null; openLabel: string }) {
   const total = DAY_END_MIN - DAY_START_MIN;
   const nowMin = istMinutes(now);
   const nowDay = istDate(now);
@@ -219,7 +224,7 @@ function Grid({ columns, tints, now, minColRem }: { columns: Column[]; tints: (m
             {columns.map((column, i) => (
               <div key={column.key} className="flex flex-col gap-1 border-b border-line px-1 py-2">
                 {outside[i].map((meeting) => (
-                  <OffHours key={meeting.id} meeting={meeting} tint={tints(meeting)} />
+                  <OffHours key={meeting.id} meeting={meeting} tint={tints(meeting)} link={meetingLink(meeting)} />
                 ))}
               </div>
             ))}
@@ -248,7 +253,7 @@ function Grid({ columns, tints, now, minColRem }: { columns: Column[]; tints: (m
                 {placed.map(({ item, lane, lanes }) => {
                   const late = span(item).start >= 15 * 60;
                   const placement = `${late ? "bottom-full mb-1.5" : "top-full mt-1.5"} ${rightSide ? "right-0" : "left-0"}`;
-                  return <Block key={item.id} meeting={item} tint={tints(item)} lane={lane} lanes={lanes} placement={placement} />;
+                  return <Block key={item.id} meeting={item} tint={tints(item)} lane={lane} lanes={lanes} placement={placement} link={meetingLink(item)} openLabel={openLabel} />;
                 })}
                 {showNow && (
                   <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: `${((nowMin - DAY_START_MIN) / total) * 100}%` }}>
@@ -266,7 +271,7 @@ function Grid({ columns, tints, now, minColRem }: { columns: Column[]; tints: (m
   );
 }
 
-function OffHours({ meeting, tint }: { meeting: Meeting; tint: Tint }) {
+function OffHours({ meeting, tint, link }: { meeting: Meeting; tint: Tint; link: string | null }) {
   const cancelled = meeting.status === "cancelled";
   const content = (
     <>
@@ -276,8 +281,8 @@ function OffHours({ meeting, tint }: { meeting: Meeting; tint: Tint }) {
     </>
   );
   const className = "flex min-w-0 items-center gap-1.5 rounded-lg bg-surface-2 px-2 py-1 text-[0.6875rem]";
-  return meeting.call_id ? (
-    <Link href={`/dashboard/calls/${meeting.call_id}`} className={`${className} hover:text-ink`}>
+  return link ? (
+    <Link href={link} className={`${className} hover:text-ink`}>
       {content}
     </Link>
   ) : (
@@ -285,7 +290,7 @@ function OffHours({ meeting, tint }: { meeting: Meeting; tint: Tint }) {
   );
 }
 
-function Upcoming({ meetings, tints, now, periodLabel }: { meetings: Meeting[]; tints: (meeting: Meeting) => Tint; now: Date; periodLabel: string }) {
+function Upcoming({ meetings, tints, now, periodLabel, meetingLink }: { meetings: Meeting[]; tints: (meeting: Meeting) => Tint; now: Date; periodLabel: string; meetingLink: (meeting: Meeting) => string | null }) {
   const next = meetings.filter((meeting) => meeting.status !== "cancelled" && meeting.end.getTime() > now.getTime()).slice(0, 8);
   return (
     <div className="mt-6 md:hidden">
@@ -296,6 +301,7 @@ function Upcoming({ meetings, tints, now, periodLabel }: { meetings: Meeting[]; 
         <ul className="flex flex-col gap-2">
           {next.map((meeting) => {
             const tint = tints(meeting);
+            const link = meetingLink(meeting);
             const row = (
               <span className="flex items-start gap-3 rounded-2xl border border-line border-l-[3px] px-3.5 py-3" style={{ borderLeftColor: tint.edge, background: tint.bg }}>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -316,8 +322,8 @@ function Upcoming({ meetings, tints, now, periodLabel }: { meetings: Meeting[]; 
             );
             return (
               <li key={meeting.id}>
-                {meeting.call_id ? (
-                  <Link href={`/dashboard/calls/${meeting.call_id}`} className="block rounded-2xl">
+                {link ? (
+                  <Link href={link} className="block rounded-2xl">
                     {row}
                   </Link>
                 ) : (
@@ -338,13 +344,18 @@ export function ConsultationCalendar({
   meetings,
   designers,
   now,
+  links = {},
 }: {
   params: CalendarParams;
   cal: CalendarView;
   meetings: Meeting[];
   designers: DesignerRef[];
   now: Date;
+  links?: CalendarLinks;
 }) {
+  const to = (change: Partial<Record<keyof CalendarParams, string | undefined>>) => href(params, change, links);
+  const meetingLink = links.meeting ?? callLink;
+  const openLabel = links.openLabel ?? "Open the enquiry call →";
   // Every designer gets a stable tint from their position in the name-sorted list.
   const known = new Map(designers.map((d) => [d.id, d.name]));
   for (const meeting of meetings) if (meeting.designer_id && !known.has(meeting.designer_id)) known.set(meeting.designer_id, meeting.designer_name ?? "Designer");
@@ -375,7 +386,7 @@ export function ConsultationCalendar({
         meetings: list,
         emptyText: "No consultations",
         label: (
-          <Link href={href(params, { view: "day", date: day, week: undefined })} className="group flex flex-col items-start gap-0.5 rounded-xl">
+          <Link href={to({ view: "day", date: day, week: undefined })} className="group flex flex-col items-start gap-0.5 rounded-xl">
             <span className="text-[0.6875rem] uppercase tracking-wider text-ink-soft">{dayLabel(day, { weekday: "short" })}</span>
             <span className="flex items-baseline gap-2">
               <span className={`grid h-8 min-w-8 place-items-center rounded-full px-1 text-lg font-light tabular-nums ${today ? "bg-accent text-accent-ink" : "text-ink group-hover:bg-surface-2"}`}>
@@ -439,53 +450,55 @@ export function ConsultationCalendar({
         <nav aria-label="Calendar navigation" className="flex flex-wrap items-center gap-2">
           <span className="inline-flex rounded-full border border-line bg-surface-2 p-0.5">
             <Link
-              href={href(params, { view: "day", date: containsToday ? cal.today : cal.start, week: undefined })}
+              href={to({ view: "day", date: containsToday ? cal.today : cal.start, week: undefined })}
               aria-current={!isWeek ? "page" : undefined}
               className={`rounded-full px-3.5 py-1 text-sm transition ${!isWeek ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink"}`}
             >
               Day
             </Link>
             <Link
-              href={href(params, { view: undefined, week: mondayOf(cal.start), date: undefined })}
+              href={to({ view: undefined, week: mondayOf(cal.start), date: undefined })}
               aria-current={isWeek ? "page" : undefined}
               className={`rounded-full px-3.5 py-1 text-sm transition ${isWeek ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink"}`}
             >
               Week
             </Link>
           </span>
-          <Link href={href(params, { [navKey]: addDays(cal.start, -step) })} className={`${pillIdle} px-2.5`} aria-label={isWeek ? "Previous week" : "Previous day"}>
+          <Link href={to({ [navKey]: addDays(cal.start, -step) })} className={`${pillIdle} px-2.5`} aria-label={isWeek ? "Previous week" : "Previous day"}>
             <span aria-hidden="true">←</span>
           </Link>
-          <Link href={href(params, { week: undefined, date: undefined })} className={containsToday ? pillActive : pillIdle} aria-current={containsToday ? "date" : undefined}>
+          <Link href={to({ week: undefined, date: undefined })} className={containsToday ? pillActive : pillIdle} aria-current={containsToday ? "date" : undefined}>
             Today
           </Link>
-          <Link href={href(params, { [navKey]: addDays(cal.start, step) })} className={`${pillIdle} px-2.5`} aria-label={isWeek ? "Next week" : "Next day"}>
+          <Link href={to({ [navKey]: addDays(cal.start, step) })} className={`${pillIdle} px-2.5`} aria-label={isWeek ? "Next week" : "Next day"}>
             <span aria-hidden="true">→</span>
           </Link>
         </nav>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <nav aria-label="Filter by designer" className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1">
-          <Link href={href(params, { designer: undefined })} aria-current={!cal.designer ? "true" : undefined} className={!cal.designer ? pillActive : pillIdle}>
-            All designers
-          </Link>
-          {ordered.map((d) => {
-            const selected = cal.designer === d.id;
-            return (
-              <Link key={d.id} href={href(params, { designer: selected ? undefined : d.id })} aria-current={selected ? "true" : undefined} className={`${selected ? pillActive : pillIdle} gap-2`}>
-                <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full ring-1 ring-surface" style={{ background: tintFor(tintIndex.get(d.id)!).swatch }} />
-                {d.name}
-              </Link>
-            );
-          })}
-          {hasUnassigned && !cal.designer && (
-            <span className={`${pill} gap-2 text-ink-soft`}>
-              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: UNASSIGNED_TINT.swatch }} />
-              Unassigned
-            </span>
-          )}
-        </nav>
+        {links.designerFilter !== false && (
+          <nav aria-label="Filter by designer" className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1">
+            <Link href={to({ designer: undefined })} aria-current={!cal.designer ? "true" : undefined} className={!cal.designer ? pillActive : pillIdle}>
+              All designers
+            </Link>
+            {ordered.map((d) => {
+              const selected = cal.designer === d.id;
+              return (
+                <Link key={d.id} href={to({ designer: selected ? undefined : d.id })} aria-current={selected ? "true" : undefined} className={`${selected ? pillActive : pillIdle} gap-2`}>
+                  <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full ring-1 ring-surface" style={{ background: tintFor(tintIndex.get(d.id)!).swatch }} />
+                  {d.name}
+                </Link>
+              );
+            })}
+            {hasUnassigned && !cal.designer && (
+              <span className={`${pill} gap-2 text-ink-soft`}>
+                <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: UNASSIGNED_TINT.swatch }} />
+                Unassigned
+              </span>
+            )}
+          </nav>
+        )}
         <ul aria-label="Key" className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-muted">
           {(Object.keys(TYPE_LABEL) as ConsultType[]).map((type) => (
             <li key={type} className="flex items-center gap-1.5">
@@ -512,16 +525,16 @@ export function ConsultationCalendar({
           <p className="text-sm font-medium text-ink">No consultations {periodLabel}{designerName ? ` for ${designerName}` : ""}.</p>
           <p className="max-w-sm text-sm text-ink-soft">Bookings made by the front desk appear here as soon as Cal.com confirms them.</p>
           {!containsToday && (
-            <Link href={href(params, { week: undefined, date: undefined })} className={pillIdle}>
+            <Link href={to({ week: undefined, date: undefined })} className={pillIdle}>
               Go to today
             </Link>
           )}
         </div>
       ) : (
-        <Grid columns={columns} tints={tints} now={now} minColRem={isWeek ? 8.75 : 12} />
+        <Grid columns={columns} tints={tints} now={now} minColRem={isWeek ? 8.75 : 12} meetingLink={meetingLink} openLabel={openLabel} />
       )}
 
-      <Upcoming meetings={meetings} tints={tints} now={now} periodLabel={periodLabel} />
+      <Upcoming meetings={meetings} tints={tints} now={now} periodLabel={periodLabel} meetingLink={meetingLink} />
       <p className="mt-4 hidden text-xs text-ink-soft md:block">Times are IST. Hover or focus a meeting for its scope and contact; select it to open the enquiry call.</p>
     </section>
   );

@@ -12,7 +12,9 @@ const NAV: [string, string][] = [
   ["/dashboard/costs", "Costs"],
   ["/dashboard/quality", "Quality"],
   ["/dashboard/settings", "Settings"],
+  ["/designer/view-as", "Designer view"],
 ];
+const ADMIN_ONLY = new Set(["/dashboard/settings", "/designer/view-as"]);
 
 function Mark() {
   return (
@@ -42,7 +44,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           </span>
         </div>
         <nav aria-label="Dashboard" className="px-3 py-3 md:mt-10 md:w-full md:px-2.5 md:py-0">
-          <NavLinks items={NAV.filter(([href]) => me.role === "admin" || href !== "/dashboard/settings")} />
+          <NavLinks items={NAV.filter(([href]) => me.role === "admin" || !ADMIN_ONLY.has(href))} />
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-8 px-4 py-6 md:px-0 md:py-0">
