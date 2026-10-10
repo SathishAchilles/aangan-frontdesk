@@ -91,6 +91,9 @@ describe("needs attention", () => {
       // Handoffs.
       const a = await lead("Escalated Asha", YESTERDAY, "QUALIFIED");
       ids.escalated = await handoff(a.enquiryId, min(-90), { escalatedAt: min(-60) });
+      // Escalated long ago and never accepted: stale, so it stays off the panel.
+      const stale = await lead("Stale Escalation", new Date(NOW.getTime() - 20 * 86_400_000), "QUALIFIED");
+      await handoff(stale.enquiryId, new Date(NOW.getTime() - 20 * 86_400_000), { escalatedAt: new Date(NOW.getTime() - 20 * 86_400_000 + 3_600_000) });
       calls.escalated = a.callId;
       const night = await lead("Overnight Om", YESTERDAY, "QUALIFIED");
       ids.overnight = await handoff(night.enquiryId, new Date("2026-10-13T19:30:00+05:30")); // after hours yesterday

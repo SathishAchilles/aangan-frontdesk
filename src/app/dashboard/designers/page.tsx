@@ -21,7 +21,7 @@ export default async function Designers({ searchParams }: { searchParams: Promis
   return (
     <main className="flex flex-col gap-6">
       <PageHeader title="Designers" eyebrow="How fast each designer picks up a handoff">
-        <RangePicker range={range} path="/dashboard/designers" />
+        <RangePicker range={range} path="/dashboard/designers" keep={{ view: params.view, week: params.week, date: params.date, designer: params.designer }} />
       </PageHeader>
       <Card>
         <Table

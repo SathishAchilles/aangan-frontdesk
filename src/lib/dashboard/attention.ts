@@ -60,6 +60,9 @@ const minutesBetween = (from: Date, to: Date) => Math.floor((to.getTime() - from
 const who = (name: string | null, phone: string | null) => name ?? (phone ? maskPhone(phone) : "Unknown caller");
 const CONSULT_LABEL: Record<string, string> = { studio: "Studio consultation", site: "Site visit", principal: "Principal visit" };
 
+// Escalations older than this are stale (the lead has long gone cold) and would crowd out current items.
+export const ESCALATION_WINDOW_DAYS = 14;
+
 export async function attention(sql: postgres.Sql, schema: string, now: Date, settings: AttentionSettings): Promise<AttentionItem[]> {
   const s = (table: string) => sql(`${schema}.${table}`);
   const items: AttentionItem[] = [];
@@ -72,7 +75,8 @@ export async function attention(sql: postgres.Sql, schema: string, now: Date, se
     left join ${s("callers")} ca on ca.id = e.caller_id
     left join ${s("staff")} st on st.id = e.assigned_designer_id
     left join lateral (select c.id from ${s("calls")} c where c.enquiry_id = e.id order by c.created_at desc limit 1) lc on true
-    where h.posted_at is not null and h.posted_at <= ${now} and h.accepted_at is null`;
+    where h.posted_at is not null and h.posted_at <= ${now} and h.accepted_at is null
+      and (h.escalated_at is null or h.posted_at > ${new Date(now.getTime() - ESCALATION_WINDOW_DAYS * 86_400_000)})`;
   for (const row of handoffs) {
     const waited = minutesBetween(row.posted_at, now);
     const designer = row.designer ? `for ${row.designer}` : "unassigned";

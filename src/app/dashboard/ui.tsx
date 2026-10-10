@@ -183,9 +183,11 @@ export function Table({ head, rows, empty = "Nothing here yet." }: { head: strin
   );
 }
 
-export function RangePicker({ range, path }: { range: Range; path: string }) {
+// `keep` carries other search params (e.g. the calendar's view and week) through a date-range change.
+export function RangePicker({ range, path, keep = {} }: { range: Range; path: string; keep?: Record<string, string | undefined> }) {
   return (
     <form action={path} className="flex flex-wrap items-end gap-2 text-sm">
+      {Object.entries(keep).map(([name, value]) => (value ? <input key={name} type="hidden" name={name} value={value} /> : null))}
       <label className="flex flex-col gap-1 text-xs text-ink-muted">
         From
         <input type="date" name="from" defaultValue={range.from} className={inputClass} />
