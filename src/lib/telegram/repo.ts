@@ -1,11 +1,12 @@
 import "server-only";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { bookings, callers, calls, enquiries, handoffs, staff, tasks } from "@/db/schema";
 import { spokenSlot } from "../booking/slots";
 import type { CriterionResult } from "../rules/facts";
 import type { TelegramActionRepo } from "./actions";
 import type { DispatchRepo } from "./dispatch";
+import type { HandoffView } from "./templates";
 
 export function createTelegramActionRepo(database: Db): TelegramActionRepo {
   return {
@@ -56,56 +57,65 @@ export function createTelegramActionRepo(database: Db): TelegramActionRepo {
   };
 }
 
+// The data behind a handoff message. Shared by dispatch (unposted handoffs) and by the designer web
+// actions, which rebuild a posted message to edit it the same way a Telegram button press does.
+async function loadHandoffViews(database: Db, appUrl: string, where: SQL | undefined, limit: number): Promise<HandoffView[]> {
+  const rows = await database
+    .select({
+      handoffId: handoffs.id,
+      note: handoffs.note,
+      enquiryId: enquiries.id,
+      outcome: enquiries.outcome,
+      criteria: enquiries.criteria,
+      flags: enquiries.flags,
+      consultType: enquiries.consultType,
+      callerName: callers.name,
+      phone: callers.phoneE164,
+      designerName: staff.name,
+      designerTelegramId: staff.telegramUserId,
+    })
+    .from(handoffs)
+    .innerJoin(enquiries, eq(enquiries.id, handoffs.enquiryId))
+    .innerJoin(callers, eq(callers.id, enquiries.callerId))
+    .leftJoin(staff, eq(staff.id, enquiries.assignedDesignerId))
+    .where(where)
+    .limit(limit);
+  const views = [];
+  for (const row of rows) {
+    const [booking] = await database
+      .select({ startAt: bookings.startAt })
+      .from(bookings)
+      .where(and(eq(bookings.enquiryId, row.enquiryId), sql`${bookings.status} <> 'cancelled'`))
+      .orderBy(sql`${bookings.createdAt} desc`)
+      .limit(1);
+    const [call] = await database.select({ id: calls.id }).from(calls).where(eq(calls.enquiryId, row.enquiryId)).orderBy(sql`${calls.createdAt} desc`).limit(1);
+    views.push({
+      handoffId: row.handoffId,
+      enquiryId: row.enquiryId,
+      outcome: row.outcome,
+      callerName: row.callerName,
+      phone: row.phone,
+      slotLabel: booking ? spokenSlot(booking.startAt.toISOString()) : null,
+      consultType: row.consultType ?? null,
+      designerName: row.designerName,
+      designerTelegramId: row.designerTelegramId ?? null,
+      note: (row.note ?? null) as Record<string, unknown> | null,
+      criteria: (Array.isArray(row.criteria) ? row.criteria : []) as CriterionResult[],
+      flags: row.flags ?? [],
+      callUrl: call ? `${appUrl}/dashboard/calls/${call.id}` : null,
+    });
+  }
+  return views;
+}
+
+export async function handoffViewById(database: Db, appUrl: string, handoffId: string): Promise<HandoffView | null> {
+  const [view] = await loadHandoffViews(database, appUrl, eq(handoffs.id, handoffId), 1);
+  return view ?? null;
+}
+
 export function createDispatchRepo(database: Db, appUrl: string): DispatchRepo {
   return {
-    async pendingHandoffs(limit) {
-      const rows = await database
-        .select({
-          handoffId: handoffs.id,
-          note: handoffs.note,
-          enquiryId: enquiries.id,
-          outcome: enquiries.outcome,
-          criteria: enquiries.criteria,
-          flags: enquiries.flags,
-          consultType: enquiries.consultType,
-          callerName: callers.name,
-          phone: callers.phoneE164,
-          designerName: staff.name,
-          designerTelegramId: staff.telegramUserId,
-        })
-        .from(handoffs)
-        .innerJoin(enquiries, eq(enquiries.id, handoffs.enquiryId))
-        .innerJoin(callers, eq(callers.id, enquiries.callerId))
-        .leftJoin(staff, eq(staff.id, enquiries.assignedDesignerId))
-        .where(isNull(handoffs.postedAt))
-        .limit(limit);
-      const views = [];
-      for (const row of rows) {
-        const [booking] = await database
-          .select({ startAt: bookings.startAt })
-          .from(bookings)
-          .where(and(eq(bookings.enquiryId, row.enquiryId), sql`${bookings.status} <> 'cancelled'`))
-          .orderBy(sql`${bookings.createdAt} desc`)
-          .limit(1);
-        const [call] = await database.select({ id: calls.id }).from(calls).where(eq(calls.enquiryId, row.enquiryId)).orderBy(sql`${calls.createdAt} desc`).limit(1);
-        views.push({
-          handoffId: row.handoffId,
-          enquiryId: row.enquiryId,
-          outcome: row.outcome,
-          callerName: row.callerName,
-          phone: row.phone,
-          slotLabel: booking ? spokenSlot(booking.startAt.toISOString()) : null,
-          consultType: row.consultType ?? null,
-          designerName: row.designerName,
-          designerTelegramId: row.designerTelegramId ?? null,
-          note: (row.note ?? null) as Record<string, unknown> | null,
-          criteria: (Array.isArray(row.criteria) ? row.criteria : []) as CriterionResult[],
-          flags: row.flags ?? [],
-          callUrl: call ? `${appUrl}/dashboard/calls/${call.id}` : null,
-        });
-      }
-      return views;
-    },
+    pendingHandoffs: (limit) => loadHandoffViews(database, appUrl, isNull(handoffs.postedAt), limit),
     async markHandoffPosted(handoffId, chatId, messageId) {
       await database.update(handoffs).set({ chatId, messageId, postedAt: sql`now()` }).where(and(eq(handoffs.id, handoffId), isNull(handoffs.postedAt)));
     },

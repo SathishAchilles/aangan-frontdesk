@@ -19,8 +19,14 @@ export interface TelegramActionRepo {
 
 export type ActionResult = { action: string; ok: boolean; reason?: string };
 
-function stamp(now: Date): string {
+// HH:MM in IST, as the edited messages show it. Exported for the designer web actions, which edit
+// the same messages.
+export function stamp(now: Date): string {
   return new Date(now.getTime() + 330 * 60_000).toISOString().slice(11, 16);
+}
+
+export function resultLine(result: "won" | "lost", staffName: string): string {
+  return `${result === "won" ? "🏆 <b>Won</b>" : "➖ <b>Lost</b>"} · recorded by ${esc(staffName)}`;
 }
 
 export async function handleCallbackQuery(query: CallbackQuery, deps: { repo: TelegramActionRepo; telegram: TelegramClient; now: () => Date }): Promise<ActionResult> {
@@ -59,7 +65,7 @@ export async function handleCallbackQuery(query: CallbackQuery, deps: { repo: Te
     case "won":
     case "lost": {
       const saved = await deps.repo.recordResult(parsed.id, parsed.action, staff.id);
-      if (message && saved) await deps.telegram.edit(message.chat.id, message.message_id, `${html}\n\n${parsed.action === "won" ? "🏆 <b>Won</b>" : "➖ <b>Lost</b>"} · recorded by ${esc(staff.name)}`);
+      if (message && saved) await deps.telegram.edit(message.chat.id, message.message_id, `${html}\n\n${resultLine(parsed.action, staff.name)}`);
       await deps.telegram.answer(query.id, saved ? "Recorded." : "Already recorded.");
       return { action: parsed.action, ok: saved };
     }
