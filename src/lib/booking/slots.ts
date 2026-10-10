@@ -23,6 +23,13 @@ function clockMinutes(hour: number, minute: number, meridiem?: string): number {
 }
 
 function timeRange(part: string): { from: number; to: number } | undefined {
+  const between = part.match(/\bbetween\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s+(?:and|to|-)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (between) {
+    const from = clockMinutes(Number(between[1]), Number(between[2] ?? 0), between[3] ?? (Number(between[1]) >= 8 ? "am" : undefined));
+    let to = clockMinutes(Number(between[4]), Number(between[5] ?? 0), between[6]);
+    if (to <= from) to += 12 * 60;
+    return { from, to: Math.min(to, 24 * 60) };
+  }
   const after = part.match(/\b(?:after|from|post)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/);
   const before = part.match(/\b(?:before|until|till|by)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/);
   if (after || before) {
@@ -31,16 +38,16 @@ function timeRange(part: string): { from: number; to: number } | undefined {
       to: before ? clockMinutes(Number(before[1]), Number(before[2] ?? 0), before[3]) : 24 * 60,
     };
   }
-  if (/\bmorning\b/.test(part)) return { from: 0, to: 12 * 60 };
-  if (/\bafternoon\b/.test(part)) return { from: 12 * 60, to: 17 * 60 };
-  if (/\b(evening|after work|after office)\b/.test(part)) return { from: 17 * 60, to: 24 * 60 };
+  if (/\bmornings?\b/.test(part)) return { from: 0, to: 12 * 60 };
+  if (/\bafternoons?\b/.test(part)) return { from: 12 * 60, to: 17 * 60 };
+  if (/\b(evenings?|after work|after office)\b/.test(part)) return { from: 17 * 60, to: 24 * 60 };
   return undefined;
 }
 
 function daysIn(part: string): DayKey[] | undefined {
   if (/\bweekends?\b/.test(part)) return WEEKEND;
   if (/\bweekdays?\b/.test(part)) return WEEKDAYS;
-  const named = [...new Set((part.match(/\b[a-z]+\b/g) ?? []).map((word) => DAY_WORDS[word]).filter(Boolean))];
+  const named = [...new Set((part.match(/\b[a-z]+\b/g) ?? []).map((word) => DAY_WORDS[word] ?? DAY_WORDS[word.replace(/s$/, "")]).filter(Boolean))];
   return named.length > 0 ? named : undefined;
 }
 
@@ -48,10 +55,18 @@ function daysIn(part: string): DayKey[] | undefined {
 export function parseSlotConstraints(text: string | undefined, now: Date): SlotConstraints {
   if (!text?.trim()) return { windows: [] };
   const lower = text.toLowerCase();
+  const parts = lower.split(/\bor\b|;|,(?=\s*(?:or|weekends?|weekdays?|mon|tue|wed|thu|fri|sat|sun))/).map((part) => ({
+    days: daysIn(part),
+    range: timeRange(part),
+    bareDays: /^[\s,]*(?:(?:on\s+)?(?:mon|tue|tues|wed|thu|thurs|fri|sat|sun)[a-z]*[\s,]*)+$/.test(part.trim()),
+  }));
+  // "Thursday or Friday mornings": a time qualifier on the last part applies to bare day names before it.
+  const last = parts.at(-1);
+  if (parts.length > 1 && last?.range && parts.slice(0, -1).every((part) => part.bareDays && !part.range)) {
+    for (const part of parts) part.range = last.range;
+  }
   const windows: SlotWindow[] = [];
-  for (const part of lower.split(/\bor\b|;|,(?=\s*(?:or|weekends?|weekdays?|mon|tue|wed|thu|fri|sat|sun))/)) {
-    const days = daysIn(part);
-    const range = timeRange(part);
+  for (const { days, range } of parts) {
     if (days || range) windows.push({ days: days ?? ALL_DAYS, from: range?.from ?? 0, to: range?.to ?? 24 * 60 });
   }
   let notBefore: string | undefined;
