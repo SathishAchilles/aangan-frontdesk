@@ -1,11 +1,11 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Range } from "@/lib/dashboard/metrics";
 
 // Shared class strings so forms and buttons look the same on every page.
-export const inputClass = "rounded-full border border-line bg-surface-2 px-4 py-2 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent";
-export const buttonPrimary = "rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition hover:opacity-90";
-export const buttonSecondary = "rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink transition hover:bg-surface-2";
+export const inputClass = "rounded-full border border-line bg-surface-2 px-4 py-2 text-sm text-ink transition-colors duration-200 ease-out placeholder:text-ink-soft hover:border-line-strong focus-visible:border-accent";
+export const buttonPrimary = "rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink shadow-card transition duration-200 ease-out hover:opacity-90 hover:shadow-lift motion-safe:active:scale-[0.97]";
+export const buttonSecondary = "rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink transition duration-200 ease-out hover:border-line-strong hover:bg-surface-2 motion-safe:active:scale-[0.97]";
 
 export function PageHeader({ title, eyebrow, children, mono = false }: { title: ReactNode; eyebrow?: ReactNode; children?: ReactNode; mono?: boolean }) {
   return (
@@ -38,7 +38,7 @@ export function Badge({ tone = "neutral", children }: { tone?: "neutral" | "ok" 
 
 export function Card({ title, children, className = "", action }: { title?: string; children: ReactNode; className?: string; action?: ReactNode }) {
   return (
-    <section className={`min-w-0 rounded-3xl border border-line bg-surface p-5 shadow-card sm:p-7 ${className}`}>
+    <section className={`min-w-0 rounded-3xl border border-line bg-surface p-5 shadow-card transition-[border-color,box-shadow] duration-200 ease-out hover:border-line-strong sm:p-7 ${className}`}>
       {(title || action) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           {title && <h2 className="text-base font-medium tracking-tight text-ink">{title}</h2>}
@@ -55,7 +55,7 @@ export function Meter({ value, max, tone = "accent", className = "" }: { value: 
   const share = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   return (
     <span aria-hidden="true" className={`block h-1 w-full overflow-hidden rounded-full ${tone === "accent" ? "bg-track" : "bg-accent-ink/20"} ${className}`}>
-      <span className={`block h-full rounded-full ${tone === "accent" ? "bg-accent" : "bg-accent-ink/75"}`} style={{ width: `${(share * 100).toFixed(1)}%` }} />
+      <span className={`grow-x block h-full rounded-full ${tone === "accent" ? "bg-accent" : "bg-accent-ink/75"}`} style={{ width: `${(share * 100).toFixed(1)}%` }} />
     </span>
   );
 }
@@ -93,8 +93,8 @@ export function ColumnChart({ data, label }: { data: { label: string; value: num
         const x = i * slot + (slot - bar) / 2;
         return (
           <g key={d.label}>
-            <rect x={x} y={base - h} width={bar} height={h} rx={8} className={i === 0 ? "fill-chart-2" : "fill-accent"} />
-            <text x={x + bar / 2} y={base - h - 5} textAnchor="middle" className="fill-ink" fontSize="13">
+            <rect x={x} y={base - h} width={bar} height={h} rx={8} className={`grow-y ${i === 0 ? "fill-chart-2" : "fill-accent"}`} style={{ "--stagger": i } as CSSProperties} />
+            <text x={x + bar / 2} y={base - h - 5} textAnchor="middle" className="rise fill-ink" fontSize="13" style={{ "--stagger": i + 4 } as CSSProperties}>
               {d.value}
             </text>
             <text x={x + bar / 2} y={base + 18} textAnchor="middle" className="fill-ink-soft" fontSize="12">
@@ -130,11 +130,11 @@ export function Stat({
 }) {
   const accent = tone === "accent";
   const body = (
-    <div className={`flex h-full flex-col gap-2.5 rounded-3xl border p-5 shadow-card transition sm:p-6 ${accent ? "border-transparent bg-accent text-accent-ink" : "border-line bg-surface text-ink"} ${href ? "group-hover:-translate-y-0.5" : ""}`}>
+    <div className={`flex h-full flex-col gap-2.5 rounded-3xl border p-5 shadow-card sm:p-6 ${accent ? "border-transparent bg-accent text-accent-ink" : "border-line bg-surface text-ink"} ${href ? "lift" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <div className={`text-sm ${accent ? "text-accent-ink/85" : "text-ink-muted"}`}>{label}</div>
         {href && (
-          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${accent ? "bg-accent-ink/15" : "bg-surface-2 text-ink-muted"}`}>
+          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full transition duration-200 ease-out motion-safe:group-hover:rotate-45 ${accent ? "bg-accent-ink/15" : "bg-surface-2 text-ink-muted group-hover:bg-accent group-hover:text-accent-ink"}`}>
             <ArrowIcon />
           </span>
         )}
@@ -156,12 +156,12 @@ export function Stat({
 export function Table({ head, rows, empty = "Nothing here yet." }: { head: string[]; rows: ReactNode[][]; empty?: string }) {
   if (rows.length === 0) return <p className="rounded-2xl bg-surface-2 px-4 py-6 text-center text-sm text-ink-soft">{empty}</p>;
   return (
-    <div className="-mx-1 overflow-x-auto px-1">
+    <div className="-mx-3 overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-soft">
             {head.map((cell) => (
-              <th key={cell} scope="col" className="py-2.5 pr-4 font-medium whitespace-nowrap">
+              <th key={cell} scope="col" className="py-2.5 pr-4 font-medium whitespace-nowrap first:pl-3 last:pr-3">
                 {cell}
               </th>
             ))}
@@ -169,9 +169,9 @@ export function Table({ head, rows, empty = "Nothing here yet." }: { head: strin
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-line last:border-b-0">
+            <tr key={i} className="border-b border-line transition-colors duration-150 ease-out last:border-b-0 hover:bg-surface-2">
               {row.map((cell, j) => (
-                <td key={j} className="py-3 pr-4 align-top tabular-nums text-ink">
+                <td key={j} className="py-3 pr-4 align-top tabular-nums text-ink first:pl-3 last:pr-3">
                   {cell}
                 </td>
               ))}
@@ -197,6 +197,30 @@ export function RangePicker({ range, path }: { range: Range; path: string }) {
       <button className={buttonPrimary}>Apply</button>
     </form>
   );
+}
+
+// A status dot with a soft pulsing halo, for things that update as calls come in. Decorative.
+export function LiveDot({ tone = "ok" }: { tone?: "ok" | "danger" | "warn" | "accent" }) {
+  const fill = { ok: "bg-ok", danger: "bg-danger", warn: "bg-warn", accent: "bg-accent" }[tone];
+  return (
+    <span aria-hidden="true" className="relative inline-flex h-2 w-2 shrink-0">
+      <span className={`live-ring absolute inset-0 rounded-full ${fill}`} />
+      <span className={`relative inline-flex h-2 w-2 rounded-full ${fill}`} />
+    </span>
+  );
+}
+
+// The one clock a render uses for "today" and for every "N min ago".
+export const renderedAt = () => new Date();
+
+// "12 min ago" / "in 40 min", relative to the time the page was rendered.
+export function relTime(date: Date | null, now: Date): string {
+  if (!date) return "";
+  const diff = Math.round((now.getTime() - date.getTime()) / 60_000);
+  const span = Math.abs(diff);
+  const words = span < 1 ? null : span < 60 ? `${span} min` : span < 48 * 60 ? `${Math.round(span / 60)} h` : `${Math.round(span / 1440)} d`;
+  if (!words) return "just now";
+  return diff >= 0 ? `${words} ago` : `in ${words}`;
 }
 
 export const inr = (value: number | null | undefined) =>

@@ -9,7 +9,7 @@ import { loadReference, loadReplayRows, previewImpact } from "@/lib/settings/rep
 import { clearSettingsCache } from "@/lib/settings/store";
 import { validateSetting } from "@/lib/settings/validate";
 import { saveSetting } from "@/lib/settings/write";
-import { buttonPrimary, buttonSecondary, Card, inputClass, istTime, Notice, OUTCOME_LABEL, PageHeader, Table } from "../ui";
+import { Badge, buttonPrimary, buttonSecondary, Card, inputClass, istTime, Notice, OUTCOME_LABEL, PageHeader, relTime, renderedAt, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +50,9 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const rows = await sql<{ key: string; value: unknown; default_value: unknown; min: number | null; max: number | null; source_note: string; updated_at: Date }[]>`
     select key, value, default_value, min::float as min, max::float as max, source_note, updated_at from ${sql(`${SCHEMA_NAME}.settings`)} order by key`;
   const byKey = new Map(rows.map((row) => [row.key, row]));
+  const now = renderedAt();
+  const changed = (row: (typeof rows)[number] | undefined) => row !== undefined && JSON.stringify(row.value) !== JSON.stringify(row.default_value);
+  const changedCount = SETTING_DEFINITIONS.filter((definition) => changed(byKey.get(definition.key))).length;
 
   let preview: { key: string; changes: Awaited<ReturnType<typeof previewImpact>>; replayed: number; error?: string } | null = null;
   if (params.preview && params.value !== undefined && QUALIFICATION_KEYS.has(params.preview)) {
@@ -66,7 +69,12 @@ export default async function Settings({ searchParams }: { searchParams: Promise
 
   return (
     <main className="flex flex-col gap-6">
-      <PageHeader title="Settings" eyebrow="Admins only" />
+      <PageHeader title="Settings" eyebrow="Admins only">
+        <span className="flex flex-wrap gap-1.5">
+          <Badge tone="accent">{`${SETTING_DEFINITIONS.length} settings`}</Badge>
+          <Badge tone={changedCount > 0 ? "warn" : "neutral"}>{`${changedCount} changed from default`}</Badge>
+        </span>
+      </PageHeader>
       <p className="max-w-3xl text-sm text-ink-muted">
         Every change needs a reason, is range-checked, and is kept in the history. Changes apply to the next call. There is no setting to quote prices: pricing.md forbids it.
       </p>
@@ -86,14 +94,17 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             <form action={save} id={definition.key} className="flex scroll-mt-6 flex-col gap-3">
               <input type="hidden" name="key" value={definition.key} />
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <Link href={`/dashboard/settings/${definition.key}`} className="rounded-md font-mono text-sm font-semibold break-all text-ink underline decoration-line decoration-2 underline-offset-4 hover:decoration-accent">
-                  {definition.key}
-                </Link>
+                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Link href={`/dashboard/settings/${definition.key}`} className="rounded-md font-mono text-sm font-semibold break-all text-ink underline decoration-line decoration-2 underline-offset-4 transition-colors duration-200 hover:decoration-accent">
+                    {definition.key}
+                  </Link>
+                  {changed(row) && <Badge tone="warn">Changed from default</Badge>}
+                </span>
                 <span className="min-w-0 text-xs wrap-anywhere text-ink-soft">
                   default {show(definition.default)}
                   {definition.min !== undefined ? ` · range ${definition.min}-${definition.max}` : ""}
                   {definition.options ? ` · one of ${definition.options.join(", ")}` : ""}
-                  {row ? ` · updated ${istTime(row.updated_at)}` : ""}
+                  {row ? ` · updated ${istTime(row.updated_at)} (${relTime(row.updated_at, now)})` : ""}
                 </span>
               </div>
               <p className="text-xs text-ink-muted">{definition.source}</p>

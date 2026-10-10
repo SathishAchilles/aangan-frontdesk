@@ -17,8 +17,8 @@ const NAV: [string, string][] = [
 function Mark() {
   return (
     <span aria-hidden="true" className="relative block h-9 w-10">
-      <span className="absolute top-0 left-0 h-6 w-8 rounded-full bg-chart-2" />
-      <span className="absolute right-0 bottom-0 h-7 w-6 rounded-full bg-accent/90" />
+      <span className="absolute top-0 left-0 h-6 w-8 rounded-full bg-chart-2 transition-transform duration-300 ease-out motion-safe:group-hover:-translate-x-0.5" />
+      <span className="absolute right-0 bottom-0 h-7 w-6 rounded-full bg-accent/90 transition-transform duration-300 ease-out motion-safe:group-hover:translate-x-0.5" />
     </span>
   );
 }
@@ -30,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col md:flex-row md:gap-8 md:p-6 lg:p-8">
       <aside className="border-b border-line bg-rail md:sticky md:top-6 md:flex md:h-[calc(100vh-3rem)] lg:top-8 lg:h-[calc(100vh-4rem)] md:w-[92px] md:shrink-0 md:flex-col md:items-center md:rounded-[32px] md:border md:py-6 md:shadow-card">
         <div className="flex items-center justify-between gap-3 px-4 pt-4 md:flex-col md:px-0 md:pt-0">
-          <Link href="/dashboard" className="flex items-center gap-3 rounded-2xl text-ink md:flex-col">
+          <Link href="/dashboard" className="group flex items-center gap-3 rounded-2xl text-ink md:flex-col">
             <Mark />
             <span className="text-base font-medium md:sr-only">Aangan Frontdesk</span>
           </Link>
@@ -53,7 +53,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               Aangan Frontdesk
             </Link>
           </div>
-          <span className="flex items-center gap-3 rounded-full border border-line bg-surface py-1.5 pr-4 pl-1.5 text-xs text-ink-muted">
+          <span className="flex items-center gap-3 rounded-full border border-line bg-surface py-1.5 pr-4 pl-1.5 text-xs text-ink-muted shadow-card">
             <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full bg-accent-soft text-sm font-medium text-accent-soft-ink">
               {initial}
             </span>

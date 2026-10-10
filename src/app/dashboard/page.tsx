@@ -1,9 +1,12 @@
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
+import { attention, today } from "@/lib/dashboard/attention";
 import { costs, overview, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
 import { requireStaff } from "@/lib/auth";
-import { Card, ColumnChart, CRITERION_LABEL, inr, Meter, MeterCell, Notice, OUTCOME_LABEL, PageHeader, pct, RangePicker, Stat, Table } from "./ui";
+import type { DayKey } from "@/lib/rules/time";
+import { AttentionPanel, TodayStrip } from "./attention-panel";
+import { Card, ColumnChart, CRITERION_LABEL, inr, Meter, MeterCell, Notice, OUTCOME_LABEL, PageHeader, pct, RangePicker, renderedAt, Stat, Table } from "./ui";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,11 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const qualified = (data.outcomes.QUALIFIED ?? 0) + (data.outcomes.QUALIFIED_WITH_NOTES ?? 0);
   const cost = await costs(sql, SCHEMA_NAME, range, { calls: data.calls, qualified, booked: data.booked, won: data.won });
   const q = `?from=${range.from}&to=${range.to}`;
+  const now = renderedAt();
+  const [needs, todayCounts] = await Promise.all([
+    attention(sql, SCHEMA_NAME, now, { acceptEscalateMin: Number(values.accept_escalate_min ?? 30), office: { start: hours.start, end: hours.end, days: values.office_days as DayKey[] } }),
+    today(sql, SCHEMA_NAME, now),
+  ]);
 
   const outcomeRows = Object.entries(data.outcomes).sort((a, b) => b[1] - a[1]);
   const outcomeMax = Math.max(0, ...outcomeRows.map(([, n]) => n));
@@ -41,7 +49,11 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <RangePicker range={range} path="/dashboard" />
       </PageHeader>
 
-      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
+      <TodayStrip data={todayCounts} now={now} />
+      <AttentionPanel items={needs} now={now} />
+
+      <h2 className="-mb-2 text-sm text-ink-soft">In this range</h2>
+      <div className="stagger grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-4">
         <Stat tone="accent" label="Calls answered" value={data.calls} hint="Every call is answered by the agent" href={`/dashboard/calls${q}`} />
         <Stat label="After hours" value={`${data.after_hours_calls} (${pct(data.after_hours_share)})`} hint="Outside office hours and days" meter={{ value: data.after_hours_share, max: 1 }} />
         <Stat label="Qualified enquiries" value={qualified} href={`/dashboard/calls${q}&outcome=QUALIFIED`} meter={{ value: qualified, max: data.enquiries }} />
@@ -52,7 +64,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <Stat label="Total running cost" value={inr(cost.total_inr)} hint={`${inr(cost.per_qualified_lead)} per qualified lead`} href={`/dashboard/costs${q}`} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <div className="stagger grid gap-4 lg:grid-cols-2 lg:items-start">
         <Card title="Outcomes">
           <Table head={["Outcome", "Enquiries"]} rows={outcomeRows.map(([outcome, n]) => [OUTCOME_LABEL[outcome] ?? outcome, <MeterCell key="n" value={n} max={outcomeMax} />])} />
           {data.top_failing_criterion && (
