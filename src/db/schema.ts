@@ -58,7 +58,7 @@ export const staff = aangan
       active: boolean("active").notNull().default(true),
       createdAt: createdAt(),
     },
-    (t) => [check("staff_role_check", inList("role", STAFF_ROLES))],
+    () => [check("staff_role_check", inList("role", STAFF_ROLES))],
   )
   .enableRLS();
 
@@ -297,7 +297,7 @@ export const localities = aangan
       status: text("status").$type<"in" | "out">().notNull(),
       note: text("note"),
     },
-    (t) => [check("localities_status_check", inList("status", ["in", "out"]))],
+    () => [check("localities_status_check", inList("status", ["in", "out"]))],
   )
   .enableRLS();
 

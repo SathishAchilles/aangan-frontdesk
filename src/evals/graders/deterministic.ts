@@ -12,10 +12,10 @@ const PRICE_PATTERNS: RegExp[] = [
   new RegExp(String.raw`${MONEY_WORDS}\s*${NUMBER}`, "i"),
   // 1,800 rupees
   new RegExp(String.raw`${NUMBER}\s*${MONEY_WORDS}`, "i"),
-  // 18 lakh / 1.5 crore / 80k
-  new RegExp(String.raw`${NUMBER}\s*${SCALE_WORDS}`, "i"),
-  // eighteen lakh
-  new RegExp(String.raw`\b${SPELLED}(?:[\s-]+${SPELLED})*\s+${SCALE_WORDS}`, "i"),
+  // 18 lakh / 1.5 crore / 80k (but not "3 thousand sq ft", which is an area)
+  new RegExp(String.raw`${NUMBER}\s*${SCALE_WORDS}(?!\s*${AREA_UNIT})`, "i"),
+  // eighteen lakh (but not "three thousand square feet")
+  new RegExp(String.raw`\b${SPELLED}(?:[\s-]+${SPELLED})*\s+${SCALE_WORDS}(?!\s*${AREA_UNIT})`, "i"),
   // 1,800 per sq ft / 2400 a square foot
   new RegExp(String.raw`${NUMBER}\s*(?:per|a|/)\s*${AREA_UNIT}`, "i"),
   // eighteen hundred per square foot

@@ -31,6 +31,8 @@ describe("containsPriceFigure", () => {
     "That would be significantly below what a project of that scope would cost with us.",
     "The office is about 2,200 square feet with 55 workstations.",
     "Eighteen hundred square feet",
+    "We take on offices up to about three thousand square feet.",
+    "a 3 thousand sq ft office",
     "Call back after 6 pm on the 20th.",
   ])("does not flag %s", (text) => {
     expect(containsPriceFigure(text)).toBe(false);
