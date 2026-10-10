@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --dir src",
     "test:contract": "vitest run --dir tests/contract",
     "test:integration": "vitest run --dir tests/integration",
