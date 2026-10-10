@@ -4,6 +4,7 @@ import { buildReport } from "./report";
 import { agentSim } from "./runners/agent-sim";
 import { dataIntegrity } from "./runners/data-integrity";
 import { gateAccuracy } from "./runners/gate-accuracy";
+import { metricReconcile } from "./runners/metric-reconcile";
 import { idempotency } from "./runners/idempotency";
 import { noteAccuracy } from "./runners/note-accuracy";
 import { slotCompliance } from "./runners/slot-compliance";
@@ -40,4 +41,5 @@ export const EVALS: Record<string, EvalRunner> = {
   "note-accuracy": noteAccuracy,
   idempotency,
   "week-simulation": weekSimulation,
+  "metric-reconcile": metricReconcile,
 };
