@@ -15,6 +15,13 @@
       "when": 1791664138627,
       "tag": "0001_handoff_note",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791665641999,
+      "tag": "0002_followup_tracking",
+      "breakpoints": true
     }
   ]
 }
