@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { designers, parseRange } from "@/lib/dashboard/metrics";
@@ -10,7 +11,7 @@ import { ConsultationCalendar, parseCalendar, type CalendarParams } from "./cale
 export const dynamic = "force-dynamic";
 
 export default async function Designers({ searchParams }: { searchParams: Promise<CalendarParams> }) {
-  await requireStaff();
+  const me = await requireStaff();
   const params = await searchParams;
   const range = parseRange(params);
   const now = new Date();
@@ -27,8 +28,13 @@ export default async function Designers({ searchParams }: { searchParams: Promis
         <Table
           head={["Designer", "Assigned", "Median accept time", "Escalations", "Won", "Lost", "Won rate"]}
           rows={rows.map((row) => [
-            <span key="n" className="font-medium">
-              {row.name}
+            <span key="n" className="flex flex-col items-start gap-0.5">
+              <span className="font-medium">{row.name}</span>
+              {me.role === "admin" && (
+                <Link href={`/designer?as=${row.id}`} className="text-xs text-accent underline-offset-4 hover:underline">
+                  Designer view<span className="sr-only"> as {row.name}</span>
+                </Link>
+              )}
             </span>,
             row.assigned,
             row.median_accept_minutes === null ? (
