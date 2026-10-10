@@ -39,7 +39,7 @@ export type CallerRecord = { id: string; phoneE164: string; name: string | null 
 
 export type TaskInput = {
   enquiryId?: string;
-  kind: "urgent" | "message" | "callback";
+  kind: "urgent" | "message" | "callback" | "rebook" | "review" | "nurture" | "alert";
   reason: string;
   payload: Record<string, unknown>;
   dueAt?: Date;

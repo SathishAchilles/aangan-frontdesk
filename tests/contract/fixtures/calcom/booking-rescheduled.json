@@ -1,0 +1,1 @@
+{"triggerEvent":"BOOKING_RESCHEDULED","createdAt":"2026-10-13T10:02:40.000Z","payload":{"type":"aangan-studio-consult","uid":"cal-uid-rescheduled-2","rescheduleUid":"cal-uid-created-1","eventTypeId":7426686,"startTime":"2026-10-16T10:30:00.000Z","endTime":"2026-10-16T11:30:00.000Z","metadata":{"enquiry_id":"5b0f6f63-62c5-4a51-9d0e-1a0d4c8d2b10"},"status":"ACCEPTED"}}
