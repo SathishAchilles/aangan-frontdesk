@@ -205,7 +205,7 @@ export function TodayCard({ data, now }: { data: Insights; now: Date }) {
       id="today"
       title="Today"
       sub={date}
-      className="flex flex-col lg:col-span-5 xl:col-span-4"
+      className="flex flex-col lg:col-span-5 lg:self-start xl:col-span-4"
       aside={
         <span className="inline-flex items-center gap-2 text-xs font-semibold text-ok">
           <LiveDot />

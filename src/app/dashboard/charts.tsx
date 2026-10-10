@@ -155,7 +155,7 @@ export function AreaLineChart({ id, days, split }: { id: string; days: ActivityD
             </span>
           ))}
         </div>
-        <div className="relative h-56 min-w-0 flex-1">
+        <div className="relative h-56 min-w-0 flex-1 overflow-x-clip">
           {scale.map((v) => (
             <span key={v} aria-hidden="true" className={`absolute inset-x-0 border-t ${v === 0 ? "border-line-strong" : "border-dashed border-line"}`} style={{ top: `${y(v)}%` }} />
           ))}
@@ -198,7 +198,7 @@ export function AreaLineChart({ id, days, split }: { id: string; days: ActivityD
             <div key={d.day} aria-hidden="true" className="group absolute inset-y-0" style={{ left: `${Math.max(0, x(i) - half)}%`, width: `${Math.min(100, half * 2)}%` }}>
               <span className="absolute inset-y-0 left-1/2 border-l border-ink-muted/40 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
               <span
-                className={`pointer-events-none absolute top-6 z-10 rounded-xl bg-ink px-2.5 py-2 text-xs whitespace-nowrap text-canvas opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 ${x(i) > 60 ? "right-1/2 mr-2" : "left-1/2 ml-2"}`}
+                className={`pointer-events-none absolute top-6 z-10 rounded-xl bg-ink px-2.5 py-2 text-xs whitespace-nowrap text-canvas opacity-0 shadow-lift transition-opacity duration-150 group-hover:opacity-100 ${x(i) > 66 ? "right-1/2 mr-2" : x(i) < 33 ? "left-1/2 ml-2" : "left-1/2 -translate-x-1/2"}`}
               >
                 <b className="block font-medium">{d.label}</b>
                 {`${d.calls} calls · ${d.qualified} qualified · ${d.booked} booked`}
@@ -214,8 +214,10 @@ export function AreaLineChart({ id, days, split }: { id: string; days: ActivityD
           </span>
         ))}
       </div>
-      <table className="sr-only">
-        <caption>Daily calls, qualified enquiries and consultations booked</caption>
+      {/* A table ignores the 1px width of sr-only, so the wrapper is what gets hidden and clipped. */}
+      <div className="sr-only">
+        <table>
+          <caption>Daily calls, qualified enquiries and consultations booked</caption>
         <thead>
           <tr>
             <th scope="col">Day</th>
@@ -234,7 +236,8 @@ export function AreaLineChart({ id, days, split }: { id: string; days: ActivityD
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
