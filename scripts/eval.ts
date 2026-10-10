@@ -1,6 +1,7 @@
 // Usage: npm run eval -- <name> [--budget-inr 300] [--key value]
 import { Budget } from "../src/evals/budget";
 import { EVALS } from "../src/evals/registry";
+import { persistReport } from "../src/evals/persist";
 import { summarise, writeReportFile } from "../src/evals/report";
 
 function parseArgs(argv: string[]) {
@@ -32,6 +33,12 @@ async function main() {
   const path = writeReportFile(report);
   console.log(summarise(report));
   console.log(`report: ${path}`);
+  const url = process.env.DATABASE_MIGRATION_URL;
+  if (url && args["no-persist"] !== true) {
+    const schema = process.env.DB_SCHEMA === "aangan_test" ? "aangan_test" : "aangan";
+    const runId = await persistReport(report, url, schema);
+    console.log(`stored: ${schema}.eval_runs ${runId}`);
+  }
   process.exit(report.passed ? 0 : 1);
 }
 
