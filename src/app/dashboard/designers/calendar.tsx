@@ -32,7 +32,7 @@ type Tint = { bg: string; edge: string; swatch: string };
 const tintFor = (index: number): Tint => {
   const token = TINT_TOKENS[index % TINT_TOKENS.length];
   return {
-    bg: `color-mix(in oklab, var(${token}) 14%, var(--surface))`,
+    bg: `color-mix(in oklab, var(${token}) 16%, var(--surface))`,
     edge: `color-mix(in oklab, var(${token}) 72%, var(--surface))`,
     swatch: `color-mix(in oklab, var(${token}) 60%, var(--surface))`,
   };
@@ -90,6 +90,14 @@ const pill = "inline-flex items-center rounded-full px-3.5 py-1.5 text-sm whites
 const pillIdle = `${pill} border border-line bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink`;
 const pillActive = `${pill} border border-transparent bg-accent text-accent-ink`;
 
+function RescheduledIcon() {
+  return (
+    <svg role="img" aria-label="rescheduled" viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-warn" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 8a5 5 0 0 1-8.6 3.5M3 8a5 5 0 0 1 8.6-3.5M11.8 2v2.6H9.2M4.2 14v-2.6h2.6" />
+    </svg>
+  );
+}
+
 function StatusTag({ status }: { status: Meeting["status"] }) {
   if (status === "rescheduled") return <span className="rounded-full bg-warn-bg px-1.5 py-px text-[0.6875rem] font-medium text-warn">Rescheduled</span>;
   if (status === "cancelled") return <span className="rounded-full bg-surface px-1.5 py-px text-[0.6875rem] font-medium text-ink-soft no-underline">Cancelled</span>;
@@ -129,36 +137,42 @@ function Block({ meeting, tint, lane, lanes, placement }: { meeting: Meeting; ti
   const total = DAY_END_MIN - DAY_START_MIN;
   const short = bottom - top <= SLOT_MIN;
   const cancelled = meeting.status === "cancelled";
+  // Overlaps cascade: each later lane starts further right and sits on top, but is wider than an
+  // equal split so names stay legible; the earlier meeting's header stays visible above it.
+  const left = (lane / lanes) * 100;
+  const width = lanes > 1 ? Math.min(100 - left, (100 / lanes) * 1.7) : 100;
   const style: CSSProperties & Record<`--${string}`, string> = {
     top: `${((top - DAY_START_MIN) / total) * 100}%`,
     height: `calc(${((bottom - top) / total) * 100}% - 2px)`,
-    left: `calc(${(lane / lanes) * 100}% + 2px)`,
-    width: `calc(${100 / lanes}% - 4px)`,
+    left: `calc(${left}% + 2px)`,
+    width: `calc(${width}% - 4px)`,
+    zIndex: lane + 1,
     "--tint-bg": cancelled ? "var(--surface)" : tint.bg,
     "--tint-edge": cancelled ? "var(--line)" : tint.edge,
   };
+  // Narrow lanes (overlaps) keep the essentials: icon, start time, first name.
+  const narrow = lanes > 1;
+  const name = meeting.caller_name ?? "Unknown caller";
+  const shownName = narrow ? name.split(" ")[0] : name;
+  const nameClass = cancelled ? "text-ink-soft line-through" : "text-ink";
   const body = (
     <>
-      <span className={`flex h-full min-w-0 flex-col overflow-hidden ${short ? "justify-center" : "gap-0.5"}`}>
-        <span className="flex min-w-0 items-center gap-1.5 text-[0.6875rem] text-ink-muted">
+      <span className="flex h-full min-w-0 flex-col overflow-hidden leading-4">
+        <span className="flex min-w-0 shrink-0 items-center gap-1 text-[0.6875rem] text-ink-muted">
           <TypeIcon type={meeting.consult_type} className="h-3 w-3 shrink-0" />
           <span className="sr-only">{TYPE_LABEL[meeting.consult_type]},</span>
-          <span className="truncate tabular-nums">{timeRange(meeting)}</span>
-          {short && <span className={`truncate font-medium text-ink ${cancelled ? "text-ink-soft line-through" : ""}`}>{meeting.caller_name ?? "Unknown caller"}</span>}
+          <span className="shrink-0 tabular-nums">{narrow ? hhmm(start) : timeRange(meeting)}</span>
+          {meeting.status === "rescheduled" && <RescheduledIcon />}
+          {cancelled && <span className="sr-only">cancelled,</span>}
+          {short && <span className={`ml-0.5 truncate font-medium ${nameClass}`}>{shownName}</span>}
         </span>
-        {!short && <span className={`truncate text-[0.8125rem] font-medium ${cancelled ? "text-ink-soft line-through" : "text-ink"}`}>{meeting.caller_name ?? "Unknown caller"}</span>}
-        {!short && meeting.locality && <span className="truncate text-[0.6875rem] text-ink-muted">{meeting.locality}</span>}
-        {!short && meeting.status !== "booked" && (
-          <span className="mt-auto">
-            <StatusTag status={meeting.status} />
-          </span>
-        )}
-        {short && meeting.status !== "booked" && <span className="sr-only">{meeting.status}</span>}
+        {!short && <span className={`mt-0.5 shrink-0 truncate text-[0.8125rem] font-medium ${nameClass}`}>{shownName}</span>}
+        {!short && !narrow && meeting.locality && bottom - top >= 60 && <span className="shrink-0 truncate text-[0.6875rem] text-ink-muted">{meeting.locality}</span>}
       </span>
       <Details meeting={meeting} tint={tint} placement={placement} />
     </>
   );
-  const className = `group absolute rounded-xl border border-l-[3px] border-(--tint-edge) bg-(--tint-bg) px-2 py-1 text-left hover:z-20 focus-visible:z-20 motion-safe:transition-shadow hover:shadow-card ${cancelled ? "border-dashed" : ""}`;
+  const className = `group absolute rounded-xl border border-l-[3px] ring-2 ring-surface border-(--tint-edge) bg-(--tint-bg) px-2 py-1 text-left hover:z-20! focus-visible:z-20! motion-safe:transition-shadow hover:shadow-card ${cancelled ? "border-dashed" : ""}`;
   return meeting.call_id ? (
     <Link href={`/dashboard/calls/${meeting.call_id}`} className={className} style={style}>
       {body}
@@ -477,8 +491,9 @@ export function ConsultationCalendar({
               {TYPE_LABEL[type]}
             </li>
           ))}
-          <li>
-            <StatusTag status="rescheduled" />
+          <li className="flex items-center gap-1.5">
+            <RescheduledIcon />
+            Rescheduled
           </li>
           <li className="text-ink-soft line-through">Cancelled</li>
         </ul>
