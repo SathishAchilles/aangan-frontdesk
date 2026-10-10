@@ -9,7 +9,7 @@ export const VAANI_API = "https://api.vaanivoice.ai";
 // Vaani's built-in transfer tool has a fixed id across agents.
 export const TRANSFER_TOOL_ID = "ed476e99-3f7c-40c4-8d17-68c5deacc2a5";
 export const MAX_CALL_MINUTES = 15;
-const LLM = { provider: "google", model: "gemini-3.5-flash", parameters: { temperature: 0.3, top_p: 1, max_tokens: 500 } };
+const LLM = { provider: "google", model: "gemini-3.5-flash", parameters: { temperature: 0.3, top_p: 1, max_tokens: 2000 } };
 
 export type SyncInput = { prompt: string; appUrl: string; toolSecret: string; frontDeskPhone: string; gitSha?: string };
 
@@ -27,9 +27,16 @@ const PY_TYPE: Record<string, string> = { string: "str", number: "float", intege
 
 // Vaani builds the signature the model sees from an "Args:" docstring at the end of the description
 // (the dashboard writes it this way); function_params alone leaves the model calling tools with {}.
-export function describeWithArgs(description: string, properties: Record<string, { type: string; description: string; enum?: string[]; items?: { type: string } }>): string {
+// Parameters not in `required` are marked optional (Google docstring style); without it the model
+// treats every parameter as required and invents values, e.g. a carpet area the caller never gave.
+export function describeWithArgs(
+  description: string,
+  properties: Record<string, { type: string; description: string; enum?: string[]; items?: { type: string } }>,
+  required: string[] = [],
+): string {
   const lines = Object.entries(properties).map(([name, spec]) => {
-    const type = spec.type === "array" ? `list[${PY_TYPE[spec.items?.type ?? "string"] ?? "str"}]` : (PY_TYPE[spec.type] ?? "str");
+    const base = spec.type === "array" ? `list[${PY_TYPE[spec.items?.type ?? "string"] ?? "str"}]` : (PY_TYPE[spec.type] ?? "str");
+    const type = required.includes(name) ? base : `${base}, optional`;
     const options = spec.enum ? ` One of: ${spec.enum.join(", ")}.` : "";
     return `    ${name} (${type}): ${spec.description}${options}`;
   });
@@ -48,7 +55,7 @@ export function buildFunctions(input: SyncInput, existing: { function_name?: str
     return {
       ...(id ? { id } : {}),
       function_name: spec.name,
-      description: describeWithArgs(spec.description, spec.parameters.properties),
+      description: describeWithArgs(spec.description, spec.parameters.properties, spec.parameters.required),
       function_params: { type: "object", properties: spec.parameters.properties, required: spec.parameters.required ?? [] },
       is_custom: true,
       agent_config: {

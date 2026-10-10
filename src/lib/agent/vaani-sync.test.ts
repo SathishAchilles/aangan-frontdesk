@@ -72,12 +72,12 @@ describe("buildFunctions", () => {
   });
   it("lists every parameter in an Args docstring, which is what Vaani shows the model", () => {
     const evaluate = functions.find((f) => f.function_name === TOOL.evaluateEnquiry)!;
-    expect(evaluate.description).toMatch(/\n\nArgs:\n {4}enquiry_id \(str\): /);
+    expect(evaluate.description).toMatch(/\n\nArgs:\n {4}enquiry_id \(str, optional\): /);
     expect(evaluate.description).toContain("    phone (str): Caller's phone number.");
-    expect(evaluate.description).toContain("    asked (list[str]): ");
-    expect(evaluate.description).toContain("    sqft (float): ");
-    expect(evaluate.description).toContain("    full_home (bool): ");
-    expect(evaluate.description).toMatch(/intent \(str\): .* One of: new, existing, other\./);
+    expect(evaluate.description).toContain("    asked (list[str], optional): ");
+    expect(evaluate.description).toContain("    sqft (float, optional): ");
+    expect(evaluate.description).toContain("    full_home (bool, optional): ");
+    expect(evaluate.description).toMatch(/intent \(str, optional\): .* One of: new, existing, other\./);
   });
 
   it("reuses Vaani's ids for tools that already exist", () => {
