@@ -23,6 +23,34 @@ describe("agent prompt", () => {
   });
 });
 
+// Same structure as the studio's existing Vaani agent prompt ("Lead Qualification").
+const SECTIONS = [
+  "# 1. AGENT IDENTITY, LINGUISTIC RULES & CORE OBJECTIVES",
+  "# 2. DYNAMIC VARIABLES & CONTEXT",
+  "# 3. THE HUMAN IMPERFECTION PROTOCOL (CRITICAL)",
+  "# 4. TTS PROSODY, SONIC SCRIPTING & CONSTRAINTS",
+  "# 5. GUARDRAILS, KNOWLEDGE BASE & ESCALATION",
+  "# 6. ADAPTIVE STATE-MACHINE (CALL FLOW)",
+  "# 7. OBJECTION HANDLING PIVOTS",
+];
+
+describe("agent prompt format", () => {
+  it("has the seven sections in order", () => {
+    const positions = SECTIONS.map((heading) => prompt.indexOf(heading));
+    expect(positions.every((position) => position >= 0), SECTIONS.filter((_, i) => positions[i] < 0).join(", ")).toBe(true);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+  it("starts the call flow at STATE 0 with the exact greeting", () => {
+    expect(prompt).toContain("STATE 0: The Pre-Recorded Greeting");
+    expect(prompt).toContain(GREETING);
+  });
+  it("keeps verbatim lines free of fillers", () => expect(prompt).toContain("The Verbatim Exception (CRITICAL)"));
+  it("uses no digits outside headings", () => {
+    const lines = prompt.split("\n").filter((line) => !/^# \d\.|^(STATE|STEP) \d|STEP \d/.test(line));
+    expect(lines.filter((line) => /\d/.test(line))).toEqual([]);
+  });
+});
+
 describe("greeting", () => {
   it("discloses the AI and the recording", () => {
     expect(GREETING).toMatch(/AI assistant/);

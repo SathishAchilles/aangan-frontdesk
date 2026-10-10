@@ -3,7 +3,7 @@
 // these results estimate quality; real calls are still required before a release.
 import type { Content, GoogleGenAI } from "@google/genai";
 import { bookSlot, getSlots } from "../../lib/booking/handlers";
-import { GREETING, TOOL_SPECS } from "../../lib/agent/spec";
+import { GREETING, TOOL, TOOL_SPECS } from "../../lib/agent/spec";
 import { defaultRulesConfig } from "../../lib/rules/config";
 import { isOfficeOpen } from "../../lib/rules/office-time";
 import { SETTING_DEFINITIONS } from "../../lib/settings/definitions";
@@ -65,21 +65,21 @@ export async function simulateCall(
 
   async function runTool(name: string, args: Record<string, unknown>, turn: number) {
     let response: { status: number; body: Record<string, unknown> };
-    if (name === "lookup_caller") response = await lookupCaller(args, toolDeps);
-    else if (name === "evaluate_enquiry") {
+    if (name === TOOL.lookupCaller) response = await lookupCaller(args, toolDeps);
+    else if (name === TOOL.evaluateEnquiry) {
       const { enquiry_id, phone, intent, asked, ...facts } = args;
       response = await evaluateEnquiry({ enquiry_id, phone, intent, asked, facts }, toolDeps);
       if (typeof response.body.outcome === "string") lastOutcome = response.body.outcome;
-    } else if (name === "get_slots") {
+    } else if (name === TOOL.getSlots) {
       response = await getSlots(args, bookingDeps);
       if (response.body.outcome === "NEEDS_HUMAN") lastOutcome = "NEEDS_HUMAN";
-    } else if (name === "book_slot") {
+    } else if (name === TOOL.bookSlot) {
       response = await bookSlot(args, bookingDeps);
       if (response.body.outcome === "NEEDS_HUMAN") lastOutcome = "NEEDS_HUMAN";
-    } else if (name === "log_intent") {
+    } else if (name === TOOL.logIntent) {
       response = await logIntent(args, toolDeps);
       lastOutcome = "NOT_ENQUIRY";
-    } else if (name === "transfer_call") {
+    } else if (name === TOOL.transferCall) {
       const open = isOfficeOpen(now, rules.office);
       response = open
         ? { status: 200, body: { ok: true, transferred: true } }
@@ -88,7 +88,7 @@ export async function simulateCall(
         lastOutcome ??= "NEEDS_HUMAN";
         ended = true;
       }
-    } else if (name === "end_call") {
+    } else if (name === TOOL.endCall) {
       ended = true;
       response = { status: 200, body: { ok: true } };
     } else response = { status: 404, body: { ok: false, error: `unknown tool ${name}` } };

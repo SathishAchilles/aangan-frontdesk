@@ -1,4 +1,5 @@
 // Deterministic grading of one simulated call. Every hard-zero metric is decided here.
+import { TOOL } from "../../lib/agent/spec";
 import { QUESTIONS } from "../../lib/rules/wording";
 import { asksAboutBudget, containsPriceFigure, oneQuestionPerTurn } from "../graders/deterministic";
 import type { Persona } from "../types";
@@ -30,19 +31,19 @@ export function gradeCall(persona: Persona, result: SimResult): CallGrade {
   const agentTurns = result.transcript.filter((line) => line.speaker === "agent").map((line) => line.text);
   const issues: string[] = [];
 
-  const evaluations = result.tools.filter((call) => call.name === "evaluate_enquiry");
+  const evaluations = result.tools.filter((call) => call.name === TOOL.evaluateEnquiry);
   const isNewEnquiry = persona.facts.intent === "new";
-  if (isNewEnquiry && evaluations.length === 0 && !result.tools.some((call) => call.name === "transfer_call")) issues.push("never called evaluate_enquiry");
-  if (!isNewEnquiry && !result.tools.some((call) => call.name === "log_intent")) issues.push("did not use log_intent");
+  if (isNewEnquiry && evaluations.length === 0 && !result.tools.some((call) => call.name === TOOL.transferCall)) issues.push(`never called ${TOOL.evaluateEnquiry}`);
+  if (!isNewEnquiry && !result.tools.some((call) => call.name === TOOL.logIntent)) issues.push(`did not use ${TOOL.logIntent}`);
   let outcomeSoFar: string | null = null;
   let offered = false;
   for (const call of result.tools) {
-    if (call.name === "evaluate_enquiry" && typeof call.body.outcome === "string") outcomeSoFar = call.body.outcome;
-    if (call.name === "get_slots") {
-      if (!outcomeSoFar || !QUALIFYING.has(outcomeSoFar)) issues.push("get_slots before qualifying");
+    if (call.name === TOOL.evaluateEnquiry && typeof call.body.outcome === "string") outcomeSoFar = call.body.outcome;
+    if (call.name === TOOL.getSlots) {
+      if (!outcomeSoFar || !QUALIFYING.has(outcomeSoFar)) issues.push(`${TOOL.getSlots} before qualifying`);
       offered = true;
     }
-    if (call.name === "book_slot" && !offered) issues.push("book_slot without get_slots");
+    if (call.name === TOOL.bookSlot && !offered) issues.push(`${TOOL.bookSlot} without ${TOOL.getSlots}`);
     if (call.status >= 400 && call.status !== 409) issues.push(`${call.name} returned ${call.status}`);
   }
 
@@ -53,7 +54,7 @@ export function gradeCall(persona: Persona, result: SimResult): CallGrade {
     if (times > 1) reasks += times - 1;
   }
 
-  const bookedLabel = result.tools.find((call) => call.name === "book_slot" && call.body.ok === true);
+  const bookedLabel = result.tools.find((call) => call.name === TOOL.bookSlot && call.body.ok === true);
   let recap: boolean | null = null;
   if (bookedLabel) {
     const after = agentTurns.slice(-2).join(" ");
@@ -62,7 +63,7 @@ export function gradeCall(persona: Persona, result: SimResult): CallGrade {
     recap = /call you back|call back|get back to you/i.test(agentTurns.slice(-3).join(" "));
   }
 
-  const callerRequestedPerson = result.tools.some((call) => call.name === "evaluate_enquiry" && call.args.wants_human === true);
+  const callerRequestedPerson = result.tools.some((call) => call.name === TOOL.evaluateEnquiry && call.args.wants_human === true);
   return {
     caller_requested_person: callerRequestedPerson,
     outcome_match:

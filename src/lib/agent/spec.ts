@@ -12,6 +12,18 @@ type JsonSchema = {
   required?: string[];
 };
 
+// Vaani tool names are unique per account and some plain names are already taken (docs/vaani-spike.md),
+// so our tools carry an aangan_ prefix. transfer_call and end_call are Vaani built-ins.
+export const TOOL = {
+  lookupCaller: "aangan_lookup_caller",
+  evaluateEnquiry: "aangan_evaluate_enquiry",
+  getSlots: "aangan_get_slots",
+  bookSlot: "aangan_book_slot",
+  logIntent: "aangan_log_intent",
+  transferCall: "transfer_call",
+  endCall: "end_call",
+} as const;
+
 export type ToolSpec = {
   name: string;
   path?: string; // our endpoint under /api/vaani/tools; absent for Vaani built-ins
@@ -45,20 +57,20 @@ const FACT_PROPERTIES: JsonSchema["properties"] = {
 
 export const TOOL_SPECS: ToolSpec[] = [
   {
-    name: "lookup_caller",
+    name: TOOL.lookupCaller,
     path: "lookup-caller",
     description: "Call silently right after the greeting. Returns the current time in IST, whether the office is open, and any recent enquiry from this number.",
     parameters: { type: "object", properties: { phone: { type: "string", description: "Caller's number, if known." } } },
   },
   {
-    name: "evaluate_enquiry",
+    name: TOOL.evaluateEnquiry,
     path: "evaluate-enquiry",
     description:
       "Call after the caller says anything new about their project. Returns outcome and the exact sentence to say next (next_question or say_line). Send all facts known so far.",
     parameters: {
       type: "object",
       properties: {
-        enquiry_id: { type: "string", description: "From lookup_caller or an earlier evaluate_enquiry result." },
+        enquiry_id: { type: "string", description: "From aangan_lookup_caller or an earlier aangan_evaluate_enquiry result." },
         phone: { type: "string", description: "Caller's phone number." },
         intent: { type: "string", enum: ["new", "existing", "other"], description: "new project, existing client, or other." },
         asked: { type: "array", items: { type: "string" }, description: "Criteria whose question you already asked: C1, C2, C3." },
@@ -68,23 +80,23 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: "get_slots",
+    name: TOOL.getSlots,
     path: "get-slots",
-    description: "Only after evaluate_enquiry returned QUALIFIED or QUALIFIED_WITH_NOTES. Returns two or three consultation times to offer.",
+    description: "Only after aangan_evaluate_enquiry returned QUALIFIED or QUALIFIED_WITH_NOTES. Returns two or three consultation times to offer.",
     parameters: {
       type: "object",
       properties: {
         enquiry_id: { type: "string", description: "The enquiry id." },
-        consult_type: { type: "string", enum: ["studio", "site", "principal"], description: "From the evaluate_enquiry result." },
+        consult_type: { type: "string", enum: ["studio", "site", "principal"], description: "From the aangan_evaluate_enquiry result." },
         constraints_text: { type: "string", description: "The caller's own words about when they are free." },
       },
       required: ["enquiry_id"],
     },
   },
   {
-    name: "book_slot",
+    name: TOOL.bookSlot,
     path: "book-slot",
-    description: "Book the time the caller chose. Use the slot id from get_slots.",
+    description: "Book the time the caller chose. Use the slot id from aangan_get_slots.",
     parameters: {
       type: "object",
       properties: {
@@ -98,7 +110,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: "log_intent",
+    name: TOOL.logIntent,
     path: "log-intent",
     description: "For an existing client with a problem (existing_client) or someone not enquiring about a project (message).",
     parameters: {
@@ -112,12 +124,12 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: "transfer_call",
+    name: TOOL.transferCall,
     description: "Transfer to the front desk. Only when the caller asks for a person and the office is open.",
     parameters: { type: "object", properties: { reason: { type: "string", description: "Why the caller is being transferred." } } },
   },
   {
-    name: "end_call",
+    name: TOOL.endCall,
     description: "End the call, only after your goodbye has been spoken.",
     parameters: { type: "object", properties: {} },
   },
