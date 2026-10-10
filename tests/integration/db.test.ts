@@ -80,3 +80,13 @@ describe("aangan_test schema", () => {
     ).rejects.toMatchObject({ code: "23514" });
   });
 });
+
+describe("db clients", () => {
+  it("rawSql returns timestamps as Date even after drizzle has been used", async () => {
+    const { db, rawSql } = await import("../../src/db/client");
+    const { settings } = await import("../../src/db/schema");
+    await db.select().from(settings).limit(1);
+    const [row] = await rawSql()<{ at: Date }[]>`select now() as at`;
+    expect(row.at).toBeInstanceOf(Date);
+  });
+});

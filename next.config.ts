@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Lets pages answer 403 with forbidden() when a viewer opens an admin-only page.
+  experimental: {
+    authInterrupts: true,
+  },
 };
 
 export default nextConfig;

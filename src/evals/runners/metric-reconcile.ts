@@ -1,5 +1,7 @@
 // Eval metric-reconcile: every dashboard figure for the fixture month, recomputed with SQL written
-// independently of src/lib/dashboard/metrics.ts. All figures must be equal.
+// independently of src/lib/dashboard/metrics.ts (one file per figure in evals/sql/metric-reconcile/). All figures must be equal.
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import postgres from "postgres";
 import { costs, overview } from "../../lib/dashboard/metrics";
 import { FIXTURE_RANGE, seedDashboardMonth } from "../fixtures/dashboard-month";
@@ -26,23 +28,12 @@ export const metricReconcile: EvalRunner = async ({ budget }) => {
     const q = (text: string) => sql.unsafe<{ v: number }[]>(text.replaceAll("S.", `"${SCHEMA}".`)).then((rows) => Number(rows[0]?.v ?? 0));
     const from = "timestamptz '2026-09-01 00:00+05:30'";
     const to = "timestamptz '2026-10-01 00:00+05:30'";
-    const independent: Record<string, number> = {
-      calls: await q(`select count(*) v from S.calls where started_at >= ${from} and started_at < ${to}`),
-      after_hours_calls: await q(`select count(*) v from S.calls where direction = 'in' and started_at >= ${from} and started_at < ${to}
-        and not (extract(isodow from started_at + interval '5 hours 30 minutes') between 1 and 5
-                 and (started_at + interval '5 hours 30 minutes')::time >= time '10:00'
-                 and (started_at + interval '5 hours 30 minutes')::time < time '19:00')`),
-      qualified: await q(`select count(*) v from S.enquiries where outcome in ('QUALIFIED','QUALIFIED_WITH_NOTES') and created_at >= ${from} and created_at < ${to}`),
-      booked: await q(`select count(*) v from S.enquiries e where created_at >= ${from} and created_at < ${to} and exists (select 1 from S.bookings b where b.enquiry_id = e.id and b.status <> 'cancelled')`),
-      consulted: await q(`select count(*) v from S.enquiries e where created_at >= ${from} and created_at < ${to} and exists (select 1 from S.bookings b where b.enquiry_id = e.id and b.status <> 'cancelled' and b.start_at < now())`),
-      won: await q(`select count(*) v from S.enquiries where consult_result = 'won' and created_at >= ${from} and created_at < ${to}`),
-      lost: await q(`select count(*) v from S.enquiries where consult_result = 'lost' and created_at >= ${from} and created_at < ${to}`),
-      callbacks_total: await q(`select count(*) v from S.tasks where kind = 'callback' and created_at >= ${from} and created_at < ${to}`),
-      callbacks_on_time: await q(`select count(*) v from S.tasks where kind = 'callback' and created_at >= ${from} and created_at < ${to} and done_at <= due_at`),
-      handoffs_posted: await q(`select count(*) v from S.handoffs where posted_at >= ${from} and posted_at < ${to}`),
-      escalations: await q(`select count(*) v from S.handoffs where escalated_at is not null and posted_at >= ${from} and posted_at < ${to}`),
-      total_cost: await q(`select (select coalesce(sum(amount_inr),0) from S.cost_lines where recorded_at >= ${from} and recorded_at < ${to}) + (select coalesce(sum(amount_inr),0) from S.fixed_costs where month = date '2026-09-01') v`),
-    };
+    const dir = join(process.cwd(), "evals/sql/metric-reconcile");
+    const independent: Record<string, number> = {};
+    for (const file of readdirSync(dir).filter((name) => name.endsWith(".sql")).sort()) {
+      const text = readFileSync(join(dir, file), "utf8").replaceAll(":from", from).replaceAll(":to", to).replace(/;\s*$/, "");
+      independent[file.replace(/\.sql$/, "")] = await q(text);
+    }
     independent.per_qualified_lead = Math.round((independent.total_cost / independent.qualified) * 100) / 100;
     independent.per_call = Math.round((independent.total_cost / independent.calls) * 100) / 100;
 

@@ -7,18 +7,23 @@ export type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 const globalForDb = globalThis as unknown as { db?: Db; sql?: postgres.Sql };
 
-function getSql(): postgres.Sql {
-  if (globalForDb.sql) return globalForDb.sql;
+function connect(max: number): postgres.Sql {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   // Supavisor's transaction pooler (:6543) does not support prepared statements.
-  globalForDb.sql = postgres(url, { prepare: false, max: 5, onnotice: () => {} });
-  return globalForDb.sql;
+  return postgres(url, { prepare: false, max, onnotice: () => {} });
 }
 
+// Drizzle replaces the date parsers on the client it wraps (timestamps come back as strings), so raw
+// queries get their own client and keep postgres-js's Date parsing.
 function getDb(): Db {
-  globalForDb.db ??= drizzle(getSql(), { schema });
+  globalForDb.db ??= drizzle(connect(5), { schema });
   return globalForDb.db;
+}
+
+function getSql(): postgres.Sql {
+  globalForDb.sql ??= connect(3);
+  return globalForDb.sql;
 }
 
 // Connect on first use, so `next build` can import this module without a database.

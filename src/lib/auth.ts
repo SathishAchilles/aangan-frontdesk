@@ -1,11 +1,12 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { staff } from "@/db/schema";
+import { authorize, DASHBOARD_ROLES, type StaffRole } from "./authz";
 import { supabaseServer } from "./supabase/server";
 
-export type CurrentStaff = { id: string; name: string; role: "admin" | "viewer" | "designer" | "front_desk"; email: string | null };
+export type CurrentStaff = { id: string; name: string; role: StaffRole; email: string | null };
 
 // The logged-in Supabase user mapped to an active staff row; anyone else is not let in.
 export async function currentStaff(): Promise<CurrentStaff | null> {
@@ -22,9 +23,10 @@ export async function currentStaff(): Promise<CurrentStaff | null> {
   return row ?? null;
 }
 
-export async function requireStaff(roles: CurrentStaff["role"][] = ["admin", "viewer"]): Promise<CurrentStaff> {
+export async function requireStaff(roles: readonly StaffRole[] = DASHBOARD_ROLES): Promise<CurrentStaff> {
   const me = await currentStaff();
-  if (!me) redirect("/login?error=not-staff");
-  if (!roles.includes(me.role)) redirect("/dashboard?error=forbidden");
+  const access = authorize(me, roles);
+  if (access === "login" || !me) redirect("/login?error=not-staff");
+  if (access === "forbidden") forbidden();
   return me;
 }
