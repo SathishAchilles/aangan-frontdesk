@@ -7,6 +7,7 @@ import { gateAccuracy } from "./runners/gate-accuracy";
 import { metricReconcile } from "./runners/metric-reconcile";
 import { idempotency } from "./runners/idempotency";
 import { noteAccuracy } from "./runners/note-accuracy";
+import { replayCorrectness } from "./runners/replay-correctness";
 import { slotCompliance } from "./runners/slot-compliance";
 import { toolLatency, toolLeakage } from "./runners/tools";
 import { weekSimulation } from "./runners/week-simulation";
@@ -42,4 +43,5 @@ export const EVALS: Record<string, EvalRunner> = {
   idempotency,
   "week-simulation": weekSimulation,
   "metric-reconcile": metricReconcile,
+  "replay-correctness": replayCorrectness,
 };
