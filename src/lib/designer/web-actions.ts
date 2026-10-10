@@ -17,7 +17,7 @@ import { acceptableBy, ownedBy } from "./queries";
 export type WebActionDeps = { db: Db; sql: postgres.Sql; schema: string; telegram: TelegramClient | null; appUrl: string; now: () => Date };
 export type Actor = { id: string; name: string };
 
-export type AcceptOutcome = { ok: true; enquiryId: string } | { ok: false; reason: "not-allowed" } | { ok: false; reason: "taken"; acceptedBy: string | null };
+export type AcceptOutcome = { ok: true; enquiryId: string; telegramUpdated: boolean } | { ok: false; reason: "not-allowed" } | { ok: false; reason: "taken"; acceptedBy: string | null };
 export type ResultOutcome = { ok: true } | { ok: false; reason: "not-allowed" | "already-recorded" };
 
 type PostedHandoff = { id: string; chat_id: number | null; message_id: number | null; accepted_at: Date | null; accepter: string | null };
@@ -33,15 +33,18 @@ async function postedHandoff(deps: WebActionDeps, where: { handoffId?: string; e
 }
 
 // Best effort: the database row is the record, a failed edit only leaves the chat a step behind.
-async function editTelegram(deps: WebActionDeps, handoff: PostedHandoff | null, build: (html: string) => { html: string; buttons?: ReturnType<typeof outcomeButtons> }) {
-  if (!deps.telegram || !handoff?.chat_id || !handoff.message_id) return;
+// Returns whether the message was edited.
+async function editTelegram(deps: WebActionDeps, handoff: PostedHandoff | null, build: (html: string) => { html: string; buttons?: ReturnType<typeof outcomeButtons> }): Promise<boolean> {
+  if (!deps.telegram || !handoff?.chat_id || !handoff.message_id) return false;
   try {
     const view = await handoffViewById(deps.db, deps.appUrl, handoff.id);
-    if (!view) return;
+    if (!view) return false;
     const next = build(handoffMessage(view).html);
     await deps.telegram.edit(handoff.chat_id, handoff.message_id, next.html, next.buttons);
+    return true;
   } catch (error) {
     log.warn("designer web action: telegram edit failed", { handoffId: handoff.id, error: error instanceof Error ? error.message : "unknown" });
+    return false;
   }
 }
 
@@ -61,8 +64,11 @@ export async function acceptOnWeb(deps: WebActionDeps, actor: Actor, handoffIdIn
   const result = await createTelegramActionRepo(deps.db).acceptHandoff(handoffId, actor.id);
   if (!result.won || !result.enquiryId) return { ok: false, reason: "taken", acceptedBy: result.acceptedBy };
   const enquiryId = result.enquiryId;
-  await editTelegram(deps, await postedHandoff(deps, { handoffId }), (html) => ({ html: acceptedFooter(html, actor.name, stamp(deps.now())), buttons: outcomeButtons(enquiryId) }));
-  return { ok: true, enquiryId };
+  const telegramUpdated = await editTelegram(deps, await postedHandoff(deps, { handoffId }), (html) => ({
+    html: acceptedFooter(html, actor.name, stamp(deps.now())),
+    buttons: outcomeButtons(enquiryId),
+  }));
+  return { ok: true, enquiryId, telegramUpdated };
 }
 
 export async function recordResultOnWeb(deps: WebActionDeps, actor: Actor, enquiryIdInput: string, result: "won" | "lost"): Promise<ResultOutcome> {

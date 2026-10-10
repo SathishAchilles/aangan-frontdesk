@@ -185,7 +185,7 @@ describe("accepting on the web", () => {
   it("sets accepted_at and accepted_by exactly like the Telegram button", async () => {
     const webBefore = await handoffRow(leads.c.handoff);
     const outcome = await acceptOnWeb(deps(), people.d2, leads.c.handoff);
-    expect(outcome).toEqual({ ok: true, enquiryId: leads.c.enquiry });
+    expect(outcome).toEqual({ ok: true, enquiryId: leads.c.enquiry, telegramUpdated: true });
     const webAfter = await handoffRow(leads.c.handoff);
 
     const tgBefore = await handoffRow(leads.f.handoff);

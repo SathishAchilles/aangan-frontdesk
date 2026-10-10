@@ -34,7 +34,7 @@ export async function acceptHandoffAction(formData: FormData) {
   const designer = await requireActingDesigner();
   const outcome = await acceptOnWeb(deps(), designer, String(formData.get("handoff") ?? ""));
   revalidatePath("/designer", "layout");
-  if (outcome.ok) redirect(back(formData, "accepted"));
+  if (outcome.ok) redirect(back(formData, outcome.telegramUpdated ? "accepted-telegram" : "accepted"));
   if (outcome.reason === "taken") redirect(back(formData, "taken", outcome.acceptedBy ? { by: outcome.acceptedBy } : {}));
   redirect(back(formData, "not-allowed"));
 }

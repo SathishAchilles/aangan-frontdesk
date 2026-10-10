@@ -20,7 +20,8 @@ export const CONSULT_LABEL: Record<string, string> = { studio: "Studio consultat
 
 // One line of feedback after an action, read from ?done= on the page the action returned to.
 const NOTICES: Record<string, { tone: "ok" | "warn" | "danger"; text: (by?: string) => string }> = {
-  accepted: { tone: "ok", text: () => "Accepted. It's yours: the Telegram message now shows it too." },
+  accepted: { tone: "ok", text: () => "Accepted. It's yours." },
+  "accepted-telegram": { tone: "ok", text: () => "Accepted. It's yours, and the Telegram message now says so." },
   taken: { tone: "warn", text: (by) => `Already accepted by ${by ?? "someone else"}.` },
   won: { tone: "ok", text: () => "Recorded as won. Congratulations." },
   lost: { tone: "ok", text: () => "Recorded as lost." },
