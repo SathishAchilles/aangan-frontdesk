@@ -1,7 +1,7 @@
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { requireStaff } from "@/lib/auth";
-import { Card, inr, istTime, Table } from "../ui";
+import { Badge, Card, inr, istTime, PageHeader, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -36,24 +36,46 @@ export default async function Quality() {
 
   return (
     <main className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Quality</h1>
+      <PageHeader title="Quality" eyebrow="Latest eval runs" />
       <Card title="Latest result per eval">
         <Table
           head={["Eval", "When (IST)", "Result", "Key metrics", "Data", "Cost"]}
           rows={[...latest.values()].map((run) => [
-            run.eval_name,
-            istTime(run.started_at),
-            run.passed ? "✅ Pass" : `❌ Fail: ${run.failed_thresholds.join("; ")}`,
+            <span key="e" className="font-mono text-xs font-medium">
+              {run.eval_name}
+            </span>,
+            <span key="w" className="whitespace-nowrap">
+              {istTime(run.started_at)}
+            </span>,
+            run.passed ? (
+              <Badge key="r" tone="ok">
+                ✅ Pass
+              </Badge>
+            ) : (
+              <Badge key="r" tone="danger">{`❌ Fail: ${run.failed_thresholds.join("; ")}`}</Badge>
+            ),
             (HEADLINE[run.eval_name] ?? Object.keys(run.metrics).slice(0, 3)).map((key) => `${key} ${format(run.metrics[key])}`).join(" · "),
             run.dataset_version,
             inr(Number(run.cost_inr)),
           ])}
           empty="No eval runs stored yet."
         />
-        <p className="mt-3 text-xs text-zinc-500">Gold labels are provisional until the founder confirms them. Simulated agent results estimate quality; real calls are graded separately.</p>
+        <p className="mt-4 text-xs text-ink-soft">Gold labels are provisional until the founder confirms them. Simulated agent results estimate quality; real calls are graded separately.</p>
       </Card>
       <Card title="History (last 20 runs per eval)">
-        <Table head={["Eval", "When (IST)", "Result", "Prompt"]} rows={runs.map((run) => [run.eval_name, istTime(run.started_at), run.passed ? "Pass" : "Fail", run.prompt_version ?? "-"])} />
+        <Table
+          head={["Eval", "When (IST)", "Result", "Prompt"]}
+          rows={runs.map((run) => [
+            <span key="e" className="font-mono text-xs">
+              {run.eval_name}
+            </span>,
+            istTime(run.started_at),
+            <Badge key="r" tone={run.passed ? "ok" : "danger"}>
+              {run.passed ? "Pass" : "Fail"}
+            </Badge>,
+            run.prompt_version ?? "-",
+          ])}
+        />
       </Card>
     </main>
   );

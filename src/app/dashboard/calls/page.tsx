@@ -4,7 +4,7 @@ import { SCHEMA_NAME } from "@/db/schema";
 import { parseRange } from "@/lib/dashboard/metrics";
 import { maskPhone } from "@/lib/phone";
 import { requireStaff } from "@/lib/auth";
-import { Card, istTime, OUTCOME_LABEL, RangePicker, Table } from "../ui";
+import { Badge, Card, istTime, OUTCOME_LABEL, OUTCOME_TONE, PageHeader, RangePicker, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -26,28 +26,53 @@ export default async function Calls({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <main className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Calls</h1>
+      <PageHeader title="Calls" eyebrow="Most recent calls in this range (up to 200)">
         <RangePicker range={range} path="/dashboard/calls" />
-      </div>
-      <div className="flex flex-wrap gap-2 text-sm">
-        {["", ...Object.keys(OUTCOME_LABEL)].map((key) => (
-          <Link key={key} href={`/dashboard/calls?from=${range.from}&to=${range.to}${key ? `&outcome=${key}` : ""}`} className={`rounded-full border px-3 py-1 ${outcome === key || (!outcome && !key) ? "border-zinc-900 dark:border-zinc-100" : "border-zinc-300 dark:border-zinc-700"}`}>
-            {key ? OUTCOME_LABEL[key] : "All"}
-          </Link>
-        ))}
-      </div>
+      </PageHeader>
+      <nav aria-label="Filter by outcome" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 text-sm">
+        {["", ...Object.keys(OUTCOME_LABEL)].map((key) => {
+          const active = outcome === key || (!outcome && !key);
+          return (
+            <Link
+              key={key}
+              href={`/dashboard/calls?from=${range.from}&to=${range.to}${key ? `&outcome=${key}` : ""}`}
+              aria-current={active ? "page" : undefined}
+              className={`shrink-0 rounded-full border px-4 py-1.5 whitespace-nowrap transition ${active ? "border-transparent bg-accent text-accent-ink" : "border-line bg-surface text-ink-muted hover:text-ink"}`}
+            >
+              {key ? OUTCOME_LABEL[key] : "All"}
+            </Link>
+          );
+        })}
+      </nav>
       <Card>
         <Table
           head={["When (IST)", "Caller", "Length", "Outcome", "Checks"]}
           rows={rows.map((row) => [
-            <Link key="t" href={`/dashboard/calls/${row.id}`} className="underline underline-offset-4">
+            <Link key="t" href={`/dashboard/calls/${row.id}`} className="font-medium whitespace-nowrap text-ink underline decoration-line decoration-2 underline-offset-4 hover:decoration-accent">
               {istTime(row.started_at)}
             </Link>,
             `${row.name ?? "Unknown"} · ${row.phone ? maskPhone(row.phone) : "no caller ID"}`,
             row.duration_s ? `${Math.floor(row.duration_s / 60)}m ${row.duration_s % 60}s` : "-",
-            row.dropped ? "Dropped" : OUTCOME_LABEL[row.outcome ?? ""] ?? "-",
-            (row.flags?.price_figure?.length ?? 0) + (row.flags?.budget_question?.length ?? 0) > 0 ? "⚠️ Safety flag" : "OK",
+            row.dropped ? (
+              <Badge key="o" tone="warn">
+                Dropped
+              </Badge>
+            ) : row.outcome && OUTCOME_LABEL[row.outcome] ? (
+              <Badge key="o" tone={OUTCOME_TONE[row.outcome]}>
+                {OUTCOME_LABEL[row.outcome]}
+              </Badge>
+            ) : (
+              "-"
+            ),
+            (row.flags?.price_figure?.length ?? 0) + (row.flags?.budget_question?.length ?? 0) > 0 ? (
+              <Badge key="c" tone="danger">
+                ⚠️ Safety flag
+              </Badge>
+            ) : (
+              <Badge key="c" tone="ok">
+                OK
+              </Badge>
+            ),
           ])}
           empty="No calls in this range."
         />

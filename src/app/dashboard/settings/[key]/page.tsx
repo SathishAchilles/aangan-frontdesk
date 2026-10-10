@@ -4,7 +4,7 @@ import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { requireStaff } from "@/lib/auth";
 import { definitionFor } from "@/lib/settings/validate";
-import { Card, istTime, Table } from "../../ui";
+import { Card, istTime, PageHeader, Table } from "../../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +19,10 @@ export default async function SettingHistory({ params }: { params: Promise<{ key
     where a.key = ${key} order by a.at desc limit 100`;
   return (
     <main className="flex flex-col gap-6">
-      <Link href={`/dashboard/settings#${key}`} className="text-sm underline underline-offset-4">
+      <Link href={`/dashboard/settings#${key}`} className="w-fit rounded-full text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline">
         ← Settings
       </Link>
-      <h1 className="font-mono text-xl font-semibold">{key}</h1>
+      <PageHeader title={key} eyebrow="Setting history" mono />
       <Card title="History">
         <Table
           head={["When (IST)", "By", "From", "To", "Reason"]}
