@@ -20,7 +20,7 @@ describe("pii-scan", () => {
       "PII_SCAN_FILE",
       logFile([
         { id: "a", timestamp: 1, requestPath: "/api/vaani/tools/lookup-caller", logs: [{ message: "caller +918056203528 not found" }] },
-        { id: "b", timestamp: 2, requestPath: "/api/webhooks/vaani?token=planted-tool-secret-123", logs: [] },
+        { id: "b", timestamp: 2, requestPath: "/api/webhooks/vaani", requestQuery: "token=planted-tool-secret-123", logs: [] },
         { id: "c", timestamp: 3, requestPath: "/api/health", logs: [{ message: "caller •••••03528 ok" }] },
       ]),
     );
@@ -30,8 +30,10 @@ describe("pii-scan", () => {
     expect(JSON.stringify(report.items)).not.toMatch(/8056203528|planted-tool-secret/);
   });
 
-  it("passes clean, masked logs", async () => {
+  it("finds no hits in clean, masked logs but flags a window shorter than 7 days", async () => {
     vi.stubEnv("PII_SCAN_FILE", logFile([{ id: "c", timestamp: 3, requestPath: "/api/health", logs: [{ message: "caller •••••03528 ok" }] }]));
-    expect((await piiScan({ budget: new Budget(0), args: {} } as never)).passed).toBe(true);
+    const report = await piiScan({ budget: new Budget(0), args: {} } as never);
+    expect(report.metrics).toMatchObject({ phone_hits: 0, secret_hits: 0 });
+    expect(report.failed_thresholds.join(" ")).toMatch(/window_hours/);
   });
 });

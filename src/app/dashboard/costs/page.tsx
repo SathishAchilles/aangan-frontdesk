@@ -2,6 +2,7 @@ import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { costs, overview, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
+import { requireStaff } from "@/lib/auth";
 import { Card, inr, RangePicker, Stat, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export default async function Costs({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+  await requireStaff();
   const range = parseRange(await searchParams);
   const { values } = await loadSettings();
   const hours = values.office_hours as { start: string; end: string };

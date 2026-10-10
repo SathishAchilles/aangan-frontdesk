@@ -42,3 +42,22 @@ describe("saving settings", () => {
     expect(await saveSetting(sql, TEST_SCHEMA, { key: "accept_reminder_min", raw: "10", reason: "", actorId: null })).toMatchObject({ ok: false });
   });
 });
+
+describe("saving through the app's database client", () => {
+  it("round-trips numbers, strings and objects after drizzle has been used", async () => {
+    const { db, rawSql } = await import("../../src/db/client");
+    const { settings } = await import("../../src/db/schema");
+    await db.select().from(settings).limit(1);
+    const app = rawSql();
+    expect(await saveSetting(app, TEST_SCHEMA, { key: "accept_reminder_min", raw: "12", reason: "app client number", actorId: null })).toMatchObject({ ok: true });
+    expect(await saveSetting(app, TEST_SCHEMA, { key: "after_hours_callback_time", raw: "10:30", reason: "app client string", actorId: null })).toMatchObject({ ok: true });
+    expect(await saveSetting(app, TEST_SCHEMA, { key: "office_hours", raw: '{"start":"09:30","end":"19:00"}', reason: "app client object", actorId: null })).toMatchObject({ ok: true });
+    const rows = await sql<{ key: string; value: unknown; kind: string }[]>`
+      select key, value, jsonb_typeof(value) as kind from ${t("settings")} where key in ('accept_reminder_min', 'after_hours_callback_time', 'office_hours') order by key`;
+    expect(rows).toEqual([
+      { key: "accept_reminder_min", value: 12, kind: "number" },
+      { key: "after_hours_callback_time", value: "10:30", kind: "string" },
+      { key: "office_hours", value: { start: "09:30", end: "19:00" }, kind: "object" },
+    ]);
+  });
+});

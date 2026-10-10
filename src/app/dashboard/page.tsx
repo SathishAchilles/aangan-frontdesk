@@ -2,11 +2,13 @@ import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { costs, overview, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
+import { requireStaff } from "@/lib/auth";
 import { Card, CRITERION_LABEL, inr, OUTCOME_LABEL, pct, RangePicker, Stat, Table } from "./ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function Overview({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; error?: string }> }) {
+  await requireStaff();
   const params = await searchParams;
   const range = parseRange(params);
   const { values } = await loadSettings();

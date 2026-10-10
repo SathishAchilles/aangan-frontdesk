@@ -21,7 +21,9 @@ const SECRET_ENV = [
   "HUBSPOT_PRIVATE_APP_TOKEN",
 ];
 
-type LogRow = { id: string; timestamp: number; requestPath?: string; message?: string; logs?: { message?: string }[] };
+type LogRow = { id: string; timestamp: number; [field: string]: unknown };
+
+const PLATFORM_FIELDS = new Set(["id", "timestamp", "traceId", "deploymentId", "projectId"]);
 
 function readLogs(): LogRow[] {
   const file = process.env.PII_SCAN_FILE;
@@ -46,7 +48,8 @@ export const piiScan: EvalRunner = async ({ budget }) => {
   let phoneHits = 0;
   let secretHits = 0;
   for (const row of rows) {
-    const text = [row.requestPath ?? "", row.message ?? "", ...(row.logs ?? []).map((entry) => entry.message ?? "")].join("\n");
+    // Every field Vercel recorded (query strings, headers, messages), minus its own ids and timestamps.
+    const text = JSON.stringify(Object.fromEntries(Object.entries(row).filter(([key]) => !PLATFORM_FIELDS.has(key))));
     const phone = FULL_MOBILE.test(text);
     const leaked = secrets.filter(([, value]) => text.includes(value)).map(([name]) => name);
     phoneHits += phone ? 1 : 0;
@@ -67,6 +70,8 @@ export const piiScan: EvalRunner = async ({ budget }) => {
       { metric: "phone_hits", op: "==", value: 0, hard: true },
       { metric: "secret_hits", op: "==", value: 0, hard: true },
       { metric: "log_lines", op: ">=", value: 1 },
+      // Shown as a failure until a log drain gives a full 7-day window.
+      { metric: "window_hours", op: ">=", value: 168 },
     ],
     items,
     costInr: budget.spentInr,

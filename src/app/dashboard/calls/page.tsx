@@ -3,11 +3,13 @@ import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { parseRange } from "@/lib/dashboard/metrics";
 import { maskPhone } from "@/lib/phone";
+import { requireStaff } from "@/lib/auth";
 import { Card, istTime, OUTCOME_LABEL, RangePicker, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function Calls({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; outcome?: string }> }) {
+  await requireStaff();
   const params = await searchParams;
   const range = parseRange(params);
   const sql = rawSql();

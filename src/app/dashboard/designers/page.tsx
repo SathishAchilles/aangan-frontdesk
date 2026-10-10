@@ -2,11 +2,13 @@ import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { designers, parseRange } from "@/lib/dashboard/metrics";
 import { loadSettings } from "@/lib/settings/store";
+import { requireStaff } from "@/lib/auth";
 import { Card, pct, RangePicker, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function Designers({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+  await requireStaff();
   const range = parseRange(await searchParams);
   const rows = await designers(rawSql(), SCHEMA_NAME, range);
   const { values } = await loadSettings();

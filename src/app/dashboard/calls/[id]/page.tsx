@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
 import { maskPhone } from "@/lib/phone";
+import { requireStaff } from "@/lib/auth";
 import { Card, CRITERION_LABEL, inr, istTime, OUTCOME_LABEL, Table } from "../../ui";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 type Criterion = { id: string; state: string; reason: string; evidence: string };
 
 export default async function CallDetail({ params }: { params: Promise<{ id: string }> }) {
+  await requireStaff();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const sql = rawSql();

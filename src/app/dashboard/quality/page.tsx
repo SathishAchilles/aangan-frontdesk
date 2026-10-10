@@ -1,5 +1,6 @@
 import { rawSql } from "@/db/client";
 import { SCHEMA_NAME } from "@/db/schema";
+import { requireStaff } from "@/lib/auth";
 import { Card, inr, istTime, Table } from "../ui";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ function format(value: number | undefined) {
 }
 
 export default async function Quality() {
+  await requireStaff();
   const sql = rawSql();
   const runs = await sql<Run[]>`
     select * from (
