@@ -1,9 +1,10 @@
 // Creates (or links) a dashboard login for a staff member.
 // Usage: npm run staff:add -- <email> "<name>" <admin|viewer> [password]
-// Without a password one is generated and printed once. If the Supabase project requires email
+// Passwords need at least 4 characters. Without one, a 4-character password is generated and printed once. If the Supabase project requires email
 // confirmation, the person confirms from their inbox (or an admin confirms in the Supabase dashboard).
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { toAuthPassword } from "../src/lib/password";
 import postgres from "postgres";
 
 const [email, name, role, given] = process.argv.slice(2);
@@ -18,14 +19,16 @@ if (!url || !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SU
 const schema = process.env.DB_SCHEMA === "aangan_test" ? "aangan_test" : "aangan";
 
 async function main() {
-  const password = given ?? randomBytes(12).toString("base64url");
+  const password = given ?? randomBytes(3).toString("base64url");
+  const padded = toAuthPassword(password, process.env.AUTH_PASSWORD_SUFFIX);
+  if (!padded.ok) throw new Error(padded.error);
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, { auth: { persistSession: false } });
   let userId: string | undefined;
-  const signUp = await supabase.auth.signUp({ email, password });
+  const signUp = await supabase.auth.signUp({ email, password: padded.authPassword });
   if (signUp.error && !/already registered|already exists/i.test(signUp.error.message)) throw signUp.error;
   userId = signUp.data.user?.id;
   if (!userId) {
-    const signIn = await supabase.auth.signInWithPassword({ email, password });
+    const signIn = await supabase.auth.signInWithPassword({ email, password: padded.authPassword });
     if (signIn.error) throw new Error(`Account exists; pass its current password to link it (${signIn.error.message})`);
     userId = signIn.data.user.id;
   }

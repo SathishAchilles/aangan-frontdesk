@@ -26,6 +26,7 @@ export const envSchema = z.object({
   TELEGRAM_WEBHOOK_SECRET: optionalString,
   HUBSPOT_PRIVATE_APP_TOKEN: optionalString,
   CRON_SECRET: optionalString,
+  AUTH_PASSWORD_SUFFIX: optionalString,
   APP_URL: z.url().default("https://aangan-frontdesk.vercel.app"),
   EVAL_BUDGET_INR: z.coerce.number().positive().default(300),
 });
@@ -34,7 +35,7 @@ export type Env = z.infer<typeof envSchema>;
 export type EnvKey = keyof Env;
 
 // Variables a production build refuses to ship without. Grows as features land.
-export const REQUIRED_IN_PRODUCTION: EnvKey[] = [];
+export const REQUIRED_IN_PRODUCTION: EnvKey[] = ["AUTH_PASSWORD_SUFFIX"];
 
 function blankToUndefined(source: Record<string, string | undefined>) {
   return Object.fromEntries(
